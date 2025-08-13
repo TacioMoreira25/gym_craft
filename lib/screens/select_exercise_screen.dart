@@ -109,34 +109,8 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
             padding: const EdgeInsets.all(16),
             color: Colors.grey[50],
             child: Column(
-              children: [
-                // Info do treino
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue[600], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Adicionando exercício',
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Botão criar novo exercício
+              children: 
+              [
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

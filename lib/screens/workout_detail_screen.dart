@@ -48,9 +48,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
-  // NOVO FLUXO: SelectExerciseScreen → AddWorkoutExerciseDialog
   Future<void> _addExercise() async {
-    // 1. Abre SelectExerciseScreen para escolher/criar exercício
     final Exercise? selectedExercise = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const SelectExerciseScreen(),
@@ -58,14 +56,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
 
     if (selectedExercise != null) {
-      // 2. Abre dialog para configurar séries/reps/peso
       await showDialog(
         context: context,
         builder: (context) => AddWorkoutExerciseDialog(
           workoutId: widget.workout.id!,
           selectedExercise: selectedExercise,
           onExerciseAdded: () {
-            _loadWorkoutExercises(); // Recarrega a lista
+            _loadWorkoutExercises();
           },
         ),
       );
@@ -127,9 +124,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.add),
             onPressed: () {
-              // TODO: Implementar edição do treino
+              _addExercise();
             },
           ),
         ],
@@ -193,12 +190,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addExercise, // ✅ Novo método
-        backgroundColor: Colors.green[600],
-        icon: const Icon(Icons.add),
-        label: const Text('Exercício'),
-      ),
     );
   }
 

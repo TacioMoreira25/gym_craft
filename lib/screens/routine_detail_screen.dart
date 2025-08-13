@@ -81,19 +81,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateWorkoutScreen(routine: widget.routine),
-            ),
-          ).then((_) => _loadData());
-        },
-        icon: Icon(Icons.add),
-        label: Text('Novo Treino'),
-        backgroundColor: Colors.indigo[700],
-      ),
     );
   }
 

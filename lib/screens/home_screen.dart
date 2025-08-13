@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import '../models/routine.dart';
 import 'create_routine_screen.dart';
 import 'routine_detail_screen.dart';
+import '../widgets/edit_routine_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,18 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _editRoutine(Routine routine) {
+  showDialog(
+    context: context,
+    builder: (context) => EditRoutineDialog(
+      routine: routine,
+      onUpdated: () {
+        _loadRoutines();
+      },
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icon(Icons.add),
         label: Text('Nova Rotina'),
         backgroundColor: Colors.indigo[700],
+        foregroundColor: Colors.white,
       ),
     );
   }
@@ -193,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (value == 'delete') {
                               _showDeleteDialog(routine);
                             } else if (value == 'edit') {
-                              // TODO: Implementar edição
+                              _editRoutine(routine);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Edição em desenvolvimento')),
                               );
