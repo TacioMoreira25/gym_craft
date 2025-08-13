@@ -3,7 +3,6 @@ import '../database/database_helper.dart';
 import '../models/routine.dart';
 import 'create_routine_screen.dart';
 import 'routine_detail_screen.dart';
-import 'exercises_library_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,17 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Minhas Rotinas'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.library_books),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ExercisesLibraryScreen()),
-            ),
-            tooltip: 'Biblioteca de Exercícios',
-          ),
-        ],
+        title: Text('Minhas Rotinas')
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())

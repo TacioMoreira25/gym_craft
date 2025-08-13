@@ -186,6 +186,17 @@ class DatabaseHelper {
     return null;
   }
 
+  Future<int> updateWorkout(Workout workout) async {
+  final db = await database;
+  return await db.update(
+    'workouts',
+    workout.toMap(),
+    where: 'id = ?',
+    whereArgs: [workout.id],
+  );
+}
+
+
   Future<int> deleteWorkout(int id) async {
     final db = await database;
     return await db.delete('workouts', where: 'id = ?', whereArgs: [id]);
@@ -251,6 +262,21 @@ class DatabaseHelper {
     }
     return null;
   }
+
+  Future<int> updateExercise(Exercise exercise) async {
+  final db = await database;
+  return await db.update(
+    'exercises',
+    exercise.toMap(),
+    where: 'id = ?',
+    whereArgs: [exercise.id],
+  );
+}
+
+Future<int> deleteExercise(int id) async {
+  final db = await database;
+  return await db.delete('exercises', where: 'id = ?', whereArgs: [id]);
+}
 
   // === CRUD EXERCÍCIOS DO TREINO ===
   Future<int> insertWorkoutExercise(WorkoutExercise workoutExercise) async {

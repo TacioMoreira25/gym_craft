@@ -5,6 +5,7 @@ import '../models/workout.dart';
 import '../utils/constants.dart';
 import 'create_workout_screen.dart';
 import 'workout_detail_screen.dart';
+import '../widgets/edit_workout_dialog.dart';
 
 class RoutineDetailScreen extends StatefulWidget {
   final Routine routine;
@@ -386,39 +387,44 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
               
               // Ações
-              PopupMenuButton(
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 18),
-                        SizedBox(width: 8),
-                        Text('Editar'),
-                      ],
+            PopupMenuButton<String>(
+              onSelected: (value) 
+              {
+                if (value == 'edit') {
+                  showDialog(
+                    context: context,
+                    builder: (context) => EditWorkoutDialog(
+                      workout: workout,
+                      onUpdated: _loadData,
                     ),
+                  );
+                } else if (value == 'delete') {
+                  _showDeleteWorkoutDialog(workout);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20),
+                      SizedBox(width: 8),
+                      Text('Editar'),
+                    ],
                   ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, color: Colors.red, size: 18),
-                        SizedBox(width: 8),
-                        Text('Excluir', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Excluir', style: TextStyle(color: Colors.red)),
+                    ],
                   ),
-                ],
-                onSelected: (value) {
-                  if (value == 'delete') {
-                    _showDeleteWorkoutDialog(workout);
-                  } else if (value == 'edit') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Edição em desenvolvimento')),
-                    );
-                  }
-                },
-              ),
+                ),
+              ],
+            ),
             ],
           ),
         ),

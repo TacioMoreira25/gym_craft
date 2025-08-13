@@ -1,47 +1,107 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-import '../models/workout.dart';
-import '../models/workout_exercise.dart';
+import '../models/exercise.dart';
 import '../utils/constants.dart';
 
 class AddExerciseScreen extends StatefulWidget {
-  final Workout workout;
-
-  const AddExerciseScreen({super.key, required this.workout});
+  const AddExerciseScreen({super.key});
 
   @override
-  _AddExerciseScreenState createState() => _AddExerciseScreenState();
+  State<AddExerciseScreen> createState() => _AddExerciseScreenState();
 }
 
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
-  // Controladores para o novo exercício
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _instructionsController = TextEditingController();
-  
-  // Controladores para configurações do treino
-  final TextEditingController _setsController = TextEditingController(text: '3');
-  final TextEditingController _repsController = TextEditingController(text: '12');
-  final TextEditingController _weightController = TextEditingController();
-  final TextEditingController _restTimeController = TextEditingController(text: '60');
-  final TextEditingController _notesController = TextEditingController();
 
   String _selectedMuscleGroup = 'Peito';
   bool _isLoading = false;
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _instructionsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveExercise() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final exercise = Exercise(
+        name: _nameController.text.trim(),
+        muscleGroup: _selectedMuscleGroup,
+        description: _descriptionController.text.trim(),
+        instructions: _instructionsController.text.trim().isEmpty 
+            ? null 
+            : _instructionsController.text.trim(),
+        createdAt: DateTime.now(),
+      );
+
+      final exerciseId = await _databaseHelper.insertExercise(exercise);
+      
+      // Cria exercício com o ID retornado
+      final exerciseWithId = Exercise(
+        id: exerciseId,
+        name: exercise.name,
+        muscleGroup: exercise.muscleGroup,
+        description: exercise.description,
+        instructions: exercise.instructions,
+        createdAt: exercise.createdAt,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${exerciseWithId.name} criado com sucesso!'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'Ver',
+              textColor: Colors.white,
+              onPressed: () {
+                // Retorna o exercício criado para seleção automática
+                Navigator.of(context).pop(exerciseWithId);
+              },
+            ),
+          ),
+        );
+        
+        // Retorna o exercício criado
+        Navigator.of(context).pop(exerciseWithId);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao criar exercício: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Adicionar Exercício'),
+        title: const Text('Criar Exercício'),
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _saveExercise,
             child: _isLoading
-                ? SizedBox(
+                ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -49,7 +109,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : Text(
+                : const Text(
                     'SALVAR',
                     style: TextStyle(
                       color: Colors.white,
@@ -60,40 +120,56 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info do treino
+              // Header visual
               Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.indigo[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.indigo[200]!),
+                  gradient: LinearGradient(
+                    colors: [Colors.green[400]!, Colors.green[600]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info, color: Colors.indigo[600]),
-                    SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.add_circle,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Adicionando exercício para:',
+                          const Text(
+                            'Novo Exercício',
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.indigo[700],
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const SizedBox(height: 4),
                           Text(
-                            widget.workout.name,
+                            'Crie um exercício personalizado para sua biblioteca',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo[800],
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -102,65 +178,60 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // Informações do exercício
+              // Formulário
               Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Novo Exercício',
-                        style: TextStyle(
-                          fontSize: 18,
+                        'Informações Básicas',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
+                      // Nome
                       TextFormField(
                         controller: _nameController,
                         decoration: InputDecoration(
                           labelText: 'Nome do Exercício',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.sports_gymnastics),
-                          hintText: 'Ex: Supino Reto, Agachamento...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.fitness_center),
+                          hintText: 'Ex: Supino reto, Agachamento livre...',
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Nome é obrigatório';
                           }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 16),
-                      
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Descrição',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
-                          hintText: 'Breve descrição do exercício...',
-                        ),
-                        maxLines: 2,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Descrição é obrigatória';
+                          if (value.trim().length < 2) {
+                            return 'Nome muito curto';
                           }
                           return null;
                         },
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
+                      // Grupo muscular
                       DropdownButtonFormField<String>(
                         value: _selectedMuscleGroup,
                         decoration: InputDecoration(
                           labelText: 'Grupo Muscular',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.fitness_center),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.category),
                         ),
                         items: AppConstants.muscleGroups.map((String value) {
                           return DropdownMenuItem<String>(
@@ -168,14 +239,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                             child: Row(
                               children: [
                                 Container(
-                                  width: 12,
-                                  height: 12,
+                                  width: 16,
+                                  height: 16,
                                   decoration: BoxDecoration(
                                     color: AppConstants.muscleGroupColors[value],
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 12),
                                 Text(value),
                               ],
                             ),
@@ -187,15 +258,39 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                           });
                         },
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       
+                      // Descrição
+                      TextFormField(
+                        controller: _descriptionController,
+                        decoration: InputDecoration(
+                          labelText: 'Descrição',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.description),
+                          hintText: 'Breve descrição do exercício...',
+                        ),
+                        maxLines: 2,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Descrição é obrigatória';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Instruções
                       TextFormField(
                         controller: _instructionsController,
                         decoration: InputDecoration(
                           labelText: 'Instruções (opcional)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.assignment),
-                          hintText: 'Como executar o exercício...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.assignment),
+                          hintText: 'Como executar, dicas técnicas...',
                         ),
                         maxLines: 3,
                       ),
@@ -203,145 +298,37 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // Configurações do treino
-              Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Configurações do Treino',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _setsController,
-                              decoration: InputDecoration(
-                                labelText: 'Séries',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.repeat),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Obrigatório';
-                                }
-                                if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                                  return 'Inválido';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _repsController,
-                              decoration: InputDecoration(
-                                labelText: 'Repetições',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.fitness_center),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Obrigatório';
-                                }
-                                if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                                  return 'Inválido';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _weightController,
-                              decoration: InputDecoration(
-                                labelText: 'Peso (kg) - Opcional',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.monitor_weight),
-                              ),
-                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _restTimeController,
-                              decoration: InputDecoration(
-                                labelText: 'Descanso (seg)',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.timer),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      
-                      TextFormField(
-                        controller: _notesController,
-                        decoration: InputDecoration(
-                          labelText: 'Notas (opcional)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.note),
-                          hintText: 'Observações sobre execução, progressão, etc...',
-                        ),
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 32),
-
-              // Aviso sobre biblioteca
+              // Dica sobre biblioteca
               Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(color: Colors.blue[200]!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lightbulb, color: Colors.green[600]),
-                    SizedBox(width: 8),
+                    Icon(Icons.library_books, color: Colors.blue[600]),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Biblioteca automática:',
+                            '💡 Biblioteca automática',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.green[800],
+                              color: Colors.blue[800],
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'Ao salvar, este exercício será automaticamente adicionado à sua biblioteca para reuso em outros treinos.',
+                            'Este exercício será salvo na sua biblioteca e poderá ser reutilizado em outros treinos.',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.green[700],
+                              color: Colors.blue[700],
                             ),
                           ),
                         ],
@@ -355,80 +342,5 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _saveExercise() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      // Criar ou buscar exercício na biblioteca
-      final exerciseId = await _databaseHelper.getOrCreateExercise(
-        _nameController.text.trim(),
-        _descriptionController.text.trim(),
-        _selectedMuscleGroup,
-        instructions: _instructionsController.text.trim().isEmpty 
-            ? null 
-            : _instructionsController.text.trim(),
-      );
-
-      // Obter próximo order_index
-      final existingExercises = await _databaseHelper.getWorkoutExercises(widget.workout.id!);
-      final nextOrder = existingExercises.length;
-
-      // Criar workout_exercise
-      final workoutExercise = WorkoutExercise(
-        workoutId: widget.workout.id!,
-        exerciseId: exerciseId,
-        sets: int.parse(_setsController.text),
-        reps: int.parse(_repsController.text),
-        weight: _weightController.text.trim().isEmpty 
-            ? null 
-            : double.tryParse(_weightController.text),
-        restTime: _restTimeController.text.trim().isEmpty 
-            ? null 
-            : int.tryParse(_restTimeController.text),
-        orderIndex: nextOrder,
-        notes: _notesController.text.trim().isEmpty 
-            ? null 
-            : _notesController.text.trim(),
-      );
-
-      await _databaseHelper.insertWorkoutExercise(workoutExercise);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exercício adicionado com sucesso!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.of(context).pop();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao salvar exercício: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _instructionsController.dispose();
-    _setsController.dispose();
-    _repsController.dispose();
-    _weightController.dispose();
-    _restTimeController.dispose();
-    _notesController.dispose();
-    super.dispose();
   }
 }

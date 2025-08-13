@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/workout.dart';
+import '../models/exercise.dart';
+import '../screens/select_exercise_screen.dart';
+import '../widgets/add_workout_exercise_dialog.dart';
 import '../utils/constants.dart';
-import 'add_exercise_screen.dart';
+import '../widgets/edit_workout_exercise_dialog.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
@@ -10,379 +13,82 @@ class WorkoutDetailScreen extends StatefulWidget {
   const WorkoutDetailScreen({super.key, required this.workout});
 
   @override
-  _WorkoutDetailScreenState createState() => _WorkoutDetailScreenState();
+  State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
-  List<Map<String, dynamic>> _exercises = [];
+  List<Map<String, dynamic>> _workoutExercises = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadExercises();
+    _loadWorkoutExercises();
   }
 
-  Future<void> _loadExercises() async {
+  Future<void> _loadWorkoutExercises() async {
     setState(() => _isLoading = true);
-    
-    final exercises = await _databaseHelper.getWorkoutExercises(widget.workout.id!);
-    
-    setState(() {
-      _exercises = exercises;
-      _isLoading = false;
-    });
+    try {
+      final exercises = await _databaseHelper.getWorkoutExercises(widget.workout.id!);
+      setState(() {
+        _workoutExercises = exercises;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao carregar exercícios: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.workout.name),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddExerciseScreen(workout: widget.workout),
-                ),
-              ).then((_) => _loadExercises());
-            },
-            tooltip: 'Adicionar Exercício',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Informações do treino
-                  _buildWorkoutInfo(),
-                  SizedBox(height: 20),
-                  
-                  // Lista de exercícios
-                  _buildExercisesList(),
-                ],
-              ),
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddExerciseScreen(workout: widget.workout),
-            ),
-          ).then((_) => _loadExercises());
-        },
-        icon: Icon(Icons.add),
-        label: Text('Adicionar Exercício'),
-        backgroundColor: Colors.indigo[700],
+  // NOVO FLUXO: SelectExerciseScreen → AddWorkoutExerciseDialog
+  Future<void> _addExercise() async {
+    // 1. Abre SelectExerciseScreen para escolher/criar exercício
+    final Exercise? selectedExercise = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SelectExerciseScreen(),
       ),
     );
-  }
 
-  Widget _buildWorkoutInfo() {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.indigo[600]),
-                SizedBox(width: 8),
-                Text(
-                  'Informações do Treino',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            if (widget.workout.description != null && widget.workout.description!.isNotEmpty) ...[
-              Text(
-                widget.workout.description!,
-                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              ),
-              SizedBox(height: 8),
-            ],
-            Row(
-              children: [
-                Icon(Icons.fitness_center, size: 16, color: Colors.grey[600]),
-                SizedBox(width: 4),
-                Text(
-                  '${_exercises.length} exercícios',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-                Spacer(),
-                Text(
-                  'Criado em ${_formatDate(widget.workout.createdAt)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-          ],
+    if (selectedExercise != null) {
+      // 2. Abre dialog para configurar séries/reps/peso
+      await showDialog(
+        context: context,
+        builder: (context) => AddWorkoutExerciseDialog(
+          workoutId: widget.workout.id!,
+          selectedExercise: selectedExercise,
+          onExerciseAdded: () {
+            _loadWorkoutExercises(); // Recarrega a lista
+          },
         ),
-      ),
-    );
+      );
+    }
   }
 
-  Widget _buildExercisesList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Exercícios (${_exercises.length})',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        
-        if (_exercises.isEmpty)
-          _buildEmptyExercises()
-        else
-          ...List.generate(_exercises.length, (index) {
-            final exercise = _exercises[index];
-            return _buildExerciseCard(exercise, index);
-          }),
-      ],
-    );
-  }
+  void _editWorkoutExercise(Map<String, dynamic> exerciseData) {
+  showDialog(
+    context: context,
+    builder: (context) => EditWorkoutExerciseDialog(
+      workoutExerciseData: exerciseData,
+      onUpdated: _loadWorkoutExercises,
+    ),
+  );
+}
 
-  Widget _buildEmptyExercises() {
-    return Container(
-      padding: EdgeInsets.all(32),
-      child: Column(
-        children: [
-          Icon(Icons.sports_gymnastics, size: 80, color: Colors.grey[300]),
-          SizedBox(height: 16),
-          Text(
-            'Nenhum exercício adicionado ainda',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Toque no + para adicionar exercícios a este treino',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExerciseCard(Map<String, dynamic> exercise, int index) {
-    final muscleGroup = exercise['muscle_group'];
-    final color = AppConstants.muscleGroupColors[muscleGroup] ?? Colors.grey;
-    
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cabeçalho do exercício
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${index + 1}. ${exercise['exercise_name']}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: color.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          muscleGroup,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton(
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 18),
-                          SizedBox(width: 8),
-                          Text('Editar'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red, size: 18),
-                          SizedBox(width: 8),
-                          Text('Excluir', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      _showDeleteExerciseDialog(exercise);
-                    } else if (value == 'edit') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Edição em desenvolvimento')),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            
-            // Informações de séries, reps, peso
-            Row(
-              children: [
-                _buildInfoChip(
-                  icon: Icons.repeat,
-                  label: '${exercise['sets']} séries',
-                  color: Colors.blue,
-                ),
-                SizedBox(width: 8),
-                _buildInfoChip(
-                  icon: Icons.fitness_center,
-                  label: '${exercise['reps']} reps',
-                  color: Colors.green,
-                ),
-                if (exercise['weight'] != null) ...[
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    icon: Icons.monitor_weight,
-                    label: '${exercise['weight']}kg',
-                    color: Colors.orange,
-                  ),
-                ],
-              ],
-            ),
-            
-            // Tempo de descanso e notas
-            if (exercise['rest_time'] != null || (exercise['notes'] != null && exercise['notes'].isNotEmpty)) ...[
-              SizedBox(height: 8),
-              if (exercise['rest_time'] != null) ...[
-                Row(
-                  children: [
-                    Icon(Icons.timer, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 4),
-                    Text(
-                      'Descanso: ${_formatRestTime(exercise['rest_time'])}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-              ],
-              if (exercise['notes'] != null && exercise['notes'].isNotEmpty) ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.note, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        exercise['notes'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteExerciseDialog(Map<String, dynamic> exercise) {
+  void _deleteExercise(Map<String, dynamic> exerciseData) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Confirmar Exclusão'),
-          content: Text('Tem certeza que deseja remover "${exercise['exercise_name']}" deste treino?'),
+          content: Text('Tem certeza que deseja remover "${exerciseData['exercise_name']}" deste treino?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -391,8 +97,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseHelper.deleteWorkoutExercise(exercise['id']);
-                _loadExercises();
+                await _databaseHelper.deleteWorkoutExercise(exerciseData['id']);
+                _loadWorkoutExercises();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Exercício removido do treino!'),
@@ -412,15 +118,372 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.workout.name),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              // TODO: Implementar edição do treino
+            },
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Header com info do treino
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue[600]!, Colors.blue[800]!],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatCard(
+                            'Exercícios',
+                            _workoutExercises.length.toString(),
+                            Icons.fitness_center,
+                          ),
+                          _buildStatCard(
+                            'Séries Total',
+                            _workoutExercises.fold<int>(
+                              0, 
+                              (sum, ex) => sum + (ex['sets'] as int? ?? 0)
+                            ).toString(),
+                            Icons.repeat,
+                          ),
+                          _buildStatCard(
+                            'Tempo Est.',
+                            '${_calculateEstimatedTime()}min',
+                            Icons.timer,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Lista de exercícios
+                Expanded(
+                  child: _workoutExercises.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _workoutExercises.length,
+                          itemBuilder: (context, index) {
+                            final exerciseData = _workoutExercises[index];
+                            return _buildExerciseCard(exerciseData, index);
+                          },
+                        ),
+                ),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addExercise, // ✅ Novo método
+        backgroundColor: Colors.green[600],
+        icon: const Icon(Icons.add),
+        label: const Text('Exercício'),
+      ),
+    );
   }
 
-  String _formatRestTime(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    return minutes > 0 
-        ? '${minutes}min ${remainingSeconds}s'
-        : '${remainingSeconds}s';
+  Widget _buildStatCard(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.fitness_center,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Nenhum exercício adicionado',
+              style: TextStyle(
+                fontSize: 20,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Toque no botão + para adicionar seu primeiro exercício',
+              style: TextStyle(
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _addExercise,
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar Exercício'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseCard(Map<String, dynamic> exerciseData, int index) {
+    final muscleGroupColor = AppConstants.muscleGroupColors[exerciseData['muscle_group']] ?? Colors.grey;
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header do exercício
+            Row(
+              children: [
+                // Ícone e ordem
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: muscleGroupColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: muscleGroupColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // Nome e grupo muscular
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exerciseData['exercise_name'] ?? 'Exercício',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        exerciseData['muscle_group'] ?? '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: muscleGroupColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Menu de opções
+                PopupMenuButton(
+                  icon: const Icon(Icons.more_vert),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Remover', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'edit':
+                        _editWorkoutExercise(exerciseData);
+                        break;
+                      case 'delete':
+                        _deleteExercise(exerciseData);
+                        break;
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Configurações do treino
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  _buildConfigItem(
+                    Icons.repeat,
+                    'Séries',
+                    exerciseData['sets']?.toString() ?? '0',
+                  ),
+                  const SizedBox(width: 16),
+                  _buildConfigItem(
+                    Icons.fitness_center,
+                    'Reps',
+                    exerciseData['reps']?.toString() ?? '0',
+                  ),
+                  if (exerciseData['weight'] != null) ...[
+                    const SizedBox(width: 16),
+                    _buildConfigItem(
+                      Icons.monitor_weight,
+                      'Peso',
+                      '${exerciseData['weight']}kg',
+                    ),
+                  ],
+                  if (exerciseData['rest_time'] != null) ...[
+                    const SizedBox(width: 16),
+                    _buildConfigItem(
+                      Icons.timer,
+                      'Descanso',
+                      '${exerciseData['rest_time']}s',
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            
+            // Notas (se houver)
+            if (exerciseData['notes'] != null && exerciseData['notes'].toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber[50],
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.amber[200]!),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.note, size: 16, color: Colors.amber[700]),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        exerciseData['notes'].toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfigItem(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        const SizedBox(width: 4),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  int _calculateEstimatedTime() {
+    int totalTime = 0;
+    for (final exercise in _workoutExercises) {
+      final sets = exercise['sets'] as int? ?? 0;
+      final restTime = exercise['rest_time'] as int? ?? 60;
+      
+      // Tempo estimado: 30s por série + tempo de descanso
+      totalTime += (sets * 30) + ((sets - 1) * restTime);
+    }
+    return (totalTime / 60).ceil(); // Converte para minutos
   }
 }

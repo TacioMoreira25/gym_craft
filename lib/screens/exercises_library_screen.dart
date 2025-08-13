@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import '../models/exercise.dart';
 import '../utils/constants.dart';
 import 'package:sqflite/sqflite.dart';
+import '../widgets/edit_exercise_dialog.dart';
 
 class ExercisesLibraryScreen extends StatefulWidget {
   const ExercisesLibraryScreen({super.key});
@@ -56,6 +57,100 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
         return matchesSearch && matchesMuscleGroup;
       }).toList();
     });
+  }
+
+  // Método para editar exercício
+  void _editExercise(Exercise exercise) {
+    showDialog(
+      context: context,
+      builder: (context) => EditExerciseDialog(
+        exercise: exercise,
+        onUpdated: _loadExercises,
+      ),
+    );
+  }
+
+  // Método para deletar exercício
+  void _showDeleteConfirmation(Exercise exercise) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Confirmar Exclusão'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Tem certeza que deseja excluir o exercício:'),
+            const SizedBox(height: 8),
+            Text(
+              exercise.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info, color: Colors.orange, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta ação irá remover o exercício de todos os treinos que o utilizam.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _databaseHelper.deleteExercise(exercise.id!);
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  _loadExercises();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Exercício excluído com sucesso!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao excluir exercício: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Excluir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -319,6 +414,53 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             ),
           ],
         ),
+        // ✅ ADICIONANDO O TRAILING COM BOTÕES DE EDIÇÃO
+        trailing: exercise.isCustom
+            ? PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editExercise(exercise);
+                  } else if (value == 'delete') {
+                    _showDeleteConfirmation(exercise);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Editar'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Excluir', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock, color: Colors.grey[400], size: 20),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Padrão',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
         children: [
           Padding(
             padding: EdgeInsets.all(16),
@@ -427,6 +569,24 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            Spacer(),
+                            // ✅ BOTÕES DE AÇÃO RÁPIDA
+                            if (exercise.isCustom) ...[
+                              IconButton(
+                                icon: Icon(Icons.edit, size: 18, color: Colors.blue[600]),
+                                onPressed: () => _editExercise(exercise),
+                                tooltip: 'Editar exercício',
+                                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                padding: EdgeInsets.all(4),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, size: 18, color: Colors.red[600]),
+                                onPressed: () => _showDeleteConfirmation(exercise),
+                                tooltip: 'Excluir exercício',
+                                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                padding: EdgeInsets.all(4),
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -460,10 +620,14 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
       case 'costas':
         return Icons.fitness_center;
       case 'pernas':
+      case 'quadricps':
+      case 'posterior':
         return Icons.directions_run;
       case 'ombros':
         return Icons.sports_gymnastics;
       case 'braços':
+      case 'bíceps':
+      case 'tríceps':
         return Icons.sports_handball;
       case 'abdômen':
         return Icons.crop_free;
