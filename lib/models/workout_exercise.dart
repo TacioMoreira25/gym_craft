@@ -1,24 +1,27 @@
+import 'workout.dart';
+import 'exercise.dart';
+import 'workout_series.dart';
+import 'series_type.dart';
+
 class WorkoutExercise {
   int? id;
   int workoutId;
   int exerciseId;
-  int sets;
-  int reps;
-  double? weight;
-  int? restTime; // em segundos
-  int orderIndex;
-  String? notes;
+  int order; 
+  String? notes; 
+  DateTime createdAt;
+
+  Exercise? exercise;
+  List<WorkoutSeries> series = [];
 
   WorkoutExercise({
     this.id,
     required this.workoutId,
     required this.exerciseId,
-    required this.sets,
-    required this.reps,
-    this.weight,
-    this.restTime,
-    required this.orderIndex,
+    required this.order,
     this.notes,
+    required this.createdAt,
+    this.exercise,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,12 +29,9 @@ class WorkoutExercise {
       'id': id,
       'workout_id': workoutId,
       'exercise_id': exerciseId,
-      'sets': sets,
-      'reps': reps,
-      'weight': weight,
-      'rest_time': restTime,
-      'order_index': orderIndex,
+      'order': order,
       'notes': notes,
+      'created_at': createdAt.millisecondsSinceEpoch,
     };
   }
 
@@ -40,12 +40,27 @@ class WorkoutExercise {
       id: map['id'],
       workoutId: map['workout_id'],
       exerciseId: map['exercise_id'],
-      sets: map['sets'],
-      reps: map['reps'],
-      weight: map['weight']?.toDouble(),
-      restTime: map['rest_time'],
-      orderIndex: map['order_index'],
+      order: map['order'],
       notes: map['notes'],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
     );
+  }
+
+  int get totalSeries => series.length;
+  
+  List<WorkoutSeries> get validSeries => series.where((s) => s.type == SeriesType.valid).toList();
+  
+  List<WorkoutSeries> get warmupSeries => series.where((s) => s.type == SeriesType.warmup).toList();
+  
+  String get seriesSummary {
+    if (series.isEmpty) return 'Nenhuma série';
+    final validCount = validSeries.length;
+    final warmupCount = warmupSeries.length;
+    
+    String summary = '${validCount} séries';
+    if (warmupCount > 0) {
+      summary += ' + ${warmupCount} aquecimento';
+    }
+    return summary;
   }
 }

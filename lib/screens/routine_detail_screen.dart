@@ -30,10 +30,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
-    final workouts = await _databaseHelper.getWorkoutsByRoutine(widget.routine.id!);
+
+    final workouts = await _databaseHelper.getWorkoutsByRoutine(
+      widget.routine.id!,
+    );
     final stats = await _databaseHelper.getRoutineStats(widget.routine.id!);
-    
+
     setState(() {
       _workouts = workouts;
       _stats = stats;
@@ -53,7 +55,8 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CreateWorkoutScreen(routine: widget.routine),
+                  builder: (context) =>
+                      CreateWorkoutScreen(routine: widget.routine),
                 ),
               ).then((_) => _loadData());
             },
@@ -71,11 +74,11 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   // Informações da rotina
                   _buildRoutineInfo(),
                   SizedBox(height: 20),
-                  
+
                   // Estatísticas
                   _buildStats(),
                   SizedBox(height: 20),
-                  
+
                   // Lista de treinos
                   _buildWorkoutsList(),
                 ],
@@ -97,25 +100,34 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Informações da Rotina',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            SizedBox(height: 12),
-            Text(
-              widget.routine.description,
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-            ),
-            SizedBox(height: 8),
+            if (widget.routine.description?.isNotEmpty == true)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  widget.routine.description!,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                ),
+              ),
             Row(
               children: [
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: widget.routine.isActive ? Colors.green[100] : Colors.grey[100],
+                    color: widget.routine.isActive
+                        ? Colors.green[100]
+                        : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -123,7 +135,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: widget.routine.isActive ? Colors.green[700] : Colors.grey[700],
+                      color: widget.routine.isActive
+                          ? Colors.green[700]
+                          : Colors.grey[700],
                     ),
                   ),
                 ),
@@ -153,10 +167,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Estatísticas',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -182,7 +193,8 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 ),
               ],
             ),
-            if (_stats['muscle_groups'] != null && _stats['muscle_groups'].isNotEmpty) ...[
+            if (_stats['muscle_groups'] != null &&
+                _stats['muscle_groups'].isNotEmpty) ...[
               SizedBox(height: 16),
               Text(
                 'Grupos Musculares:',
@@ -192,14 +204,24 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: (_stats['muscle_groups'] as List).map<Widget>((group) {
+                children: (_stats['muscle_groups'] as List).map<Widget>((
+                  group,
+                ) {
                   return Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppConstants.muscleGroupColors[group]?.withOpacity(0.1) ?? Colors.grey[100],
+                      color:
+                          AppConstants.categoryColors[group]?.withOpacity(
+                            0.1,
+                          ) ??
+                          Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppConstants.muscleGroupColors[group]?.withOpacity(0.3) ?? Colors.grey[300]!,
+                        color:
+                            AppConstants.categoryColors[group]?.withOpacity(
+                              0.3,
+                            ) ??
+                            Colors.grey[300]!,
                       ),
                     ),
                     child: Text(
@@ -207,7 +229,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: AppConstants.muscleGroupColors[group] ?? Colors.grey[700],
+                        color:
+                            AppConstants.categoryColors[group] ??
+                            Colors.grey[700],
                       ),
                     ),
                   );
@@ -220,7 +244,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -240,13 +269,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               color: color,
             ),
           ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 12, color: color)),
         ],
       ),
     );
@@ -261,15 +284,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           children: [
             Text(
               'Treinos (${_workouts.length})',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         SizedBox(height: 12),
-        
+
         if (_workouts.isEmpty)
           _buildEmptyWorkouts()
         else
@@ -290,18 +310,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           SizedBox(height: 16),
           Text(
             'Nenhum treino criado ainda',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           SizedBox(height: 8),
           Text(
             'Toque no + para adicionar seu primeiro treino',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -344,7 +358,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 ),
               ),
               SizedBox(width: 16),
-              
+
               // Informações do treino
               Expanded(
                 child: Column(
@@ -357,14 +371,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (workout.description != null && workout.description!.isNotEmpty) ...[
+                    if (workout.description != null &&
+                        workout.description!.isNotEmpty) ...[
                       SizedBox(height: 4),
                       Text(
                         workout.description!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -372,46 +384,45 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   ],
                 ),
               ),
-              
+
               // Ações
-            PopupMenuButton<String>(
-              onSelected: (value) 
-              {
-                if (value == 'edit') {
-                  showDialog(
-                    context: context,
-                    builder: (context) => EditWorkoutDialog(
-                      workout: workout,
-                      onUpdated: _loadData,
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    showDialog(
+                      context: context,
+                      builder: (context) => EditWorkoutDialog(
+                        workout: workout,
+                        onUpdated: _loadData,
+                      ),
+                    );
+                  } else if (value == 'delete') {
+                    _showDeleteWorkoutDialog(workout);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20),
+                        SizedBox(width: 8),
+                        Text('Editar'),
+                      ],
                     ),
-                  );
-                } else if (value == 'delete') {
-                  _showDeleteWorkoutDialog(workout);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 20),
-                      SizedBox(width: 8),
-                      Text('Editar'),
-                    ],
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 20, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Excluir', style: TextStyle(color: Colors.red)),
-                    ],
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Excluir', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ],
           ),
         ),
@@ -425,7 +436,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Confirmar Exclusão'),
-          content: Text('Tem certeza que deseja excluir o treino "${workout.name}"?'),
+          content: Text(
+            'Tem certeza que deseja excluir o treino "${workout.name}"?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),

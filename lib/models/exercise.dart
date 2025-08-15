@@ -1,20 +1,20 @@
 class Exercise {
   int? id;
   String name;
-  String description;
-  String muscleGroup;
+  String? description; 
+  String category;
   String? instructions;
-  DateTime createdAt;
   bool isCustom; 
+  DateTime createdAt;
 
   Exercise({
     this.id,
     required this.name,
-    required this.description,
-    required this.muscleGroup,
+    this.description,
+    required this.category,
     this.instructions,
+    this.isCustom = false,
     required this.createdAt,
-    this.isCustom = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,10 +22,10 @@ class Exercise {
       'id': id,
       'name': name,
       'description': description,
-      'muscle_group': muscleGroup,
+      'category': category,
       'instructions': instructions,
-      'created_at': createdAt.millisecondsSinceEpoch,
       'is_custom': isCustom ? 1 : 0,
+      'created_at': createdAt.millisecondsSinceEpoch,
     };
   }
 
@@ -34,10 +34,10 @@ class Exercise {
       id: map['id'],
       name: map['name'],
       description: map['description'],
-      muscleGroup: map['muscle_group'],
+      category: map['category'],
       instructions: map['instructions'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
       isCustom: map['is_custom'] == 1,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
     );
   }
 }
