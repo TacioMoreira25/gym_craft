@@ -13,12 +13,12 @@ class AddExerciseScreen extends StatefulWidget {
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _instructionsController = TextEditingController();
 
-  String _selectedMuscleGroup = 'Peito';
+  String _selectedCategory = 'Peito';
   bool _isLoading = false;
 
   @override
@@ -37,21 +37,21 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     try {
       final exercise = Exercise(
         name: _nameController.text.trim(),
-        muscleGroup: _selectedMuscleGroup,
+        category: _selectedCategory,
         description: _descriptionController.text.trim(),
-        instructions: _instructionsController.text.trim().isEmpty 
-            ? null 
+        instructions: _instructionsController.text.trim().isEmpty
+            ? null
             : _instructionsController.text.trim(),
         createdAt: DateTime.now(),
       );
 
       final exerciseId = await _databaseHelper.insertExercise(exercise);
-      
+
       // Cria exercício com o ID retornado
       final exerciseWithId = Exercise(
         id: exerciseId,
         name: exercise.name,
-        muscleGroup: exercise.muscleGroup,
+        category: exercise.category,
         description: exercise.description,
         instructions: exercise.instructions,
         createdAt: exercise.createdAt,
@@ -72,7 +72,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
             ),
           ),
         );
-        
+
         // Retorna o exercício criado
         Navigator.of(context).pop(exerciseWithId);
       }
@@ -193,13 +193,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                     children: [
                       Text(
                         'Informações Básicas',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Nome
                       TextFormField(
                         controller: _nameController,
@@ -222,10 +223,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Grupo muscular
                       DropdownButtonFormField<String>(
-                        value: _selectedMuscleGroup,
+                        value: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Grupo Muscular',
                           border: OutlineInputBorder(
@@ -242,7 +243,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                                   width: 16,
                                   height: 16,
                                   decoration: BoxDecoration(
-                                    color: AppConstants.muscleGroupColors[value],
+                                    color: AppConstants.categoryColors[value],
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -254,12 +255,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         }).toList(),
                         onChanged: (String? newValue) {
                           setState(() {
-                            _selectedMuscleGroup = newValue!;
+                            _selectedCategory = newValue!;
                           });
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Descrição
                       TextFormField(
                         controller: _descriptionController,
@@ -274,13 +275,13 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         maxLines: 2,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Descrição é obrigatória';
+                            return 'Descrição (opcional)';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Instruções
                       TextFormField(
                         controller: _instructionsController,

@@ -216,14 +216,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      routine.description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
+                    if (routine.description?.isNotEmpty == true) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        routine.description!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
+                    ],
                     SizedBox(height: 16),
                     Row(
                       children: [

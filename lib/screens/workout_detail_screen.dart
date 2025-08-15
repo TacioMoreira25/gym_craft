@@ -267,7 +267,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _buildExerciseCard(Map<String, dynamic> exerciseData, int index) {
-    final muscleGroupColor = AppConstants.muscleGroupColors[exerciseData['muscle_group']] ?? Colors.grey;
+    final muscleGroupColor = AppConstants.categoryColors[exerciseData['muscle_group']] ?? Colors.grey;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

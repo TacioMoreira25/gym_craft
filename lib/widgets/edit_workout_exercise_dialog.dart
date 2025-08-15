@@ -1,4 +1,3 @@
-// lib/widgets/edit_workout_exercise_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/workout_exercise.dart';
@@ -64,12 +63,10 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         id: data['id'],
         workoutId: data['workout_id'],
         exerciseId: data['exercise_id'],
-        sets: int.parse(_setsController.text),
-        reps: int.parse(_repsController.text),
-        weight: _weightController.text.isEmpty ? null : double.parse(_weightController.text),
-        restTime: _restController.text.isEmpty ? null : int.parse(_restController.text),
-        orderIndex: data['order_index'],
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        order: data['order'],
+        notes: data['notes'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(data['created_at']),
+        
       );
 
       await _dbHelper.updateWorkoutExercise(workoutExercise);
@@ -122,106 +119,6 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
             ),
           ),
         ],
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _setsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Séries',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.repeat),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Obrigatório';
-                        }
-                        final number = int.tryParse(value);
-                        if (number == null || number <= 0) {
-                          return 'Deve ser > 0';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _repsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reps',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.fitness_center),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Obrigatório';
-                        }
-                        final number = int.tryParse(value);
-                        if (number == null || number <= 0) {
-                          return 'Deve ser > 0';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Peso (kg)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.line_weight),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _restController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descanso (s)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.timer),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Observações (opcional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.note),
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ),
-        ),
       ),
       actions: [
         TextButton(

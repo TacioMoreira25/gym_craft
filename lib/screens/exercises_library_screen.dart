@@ -16,11 +16,11 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   List<Exercise> _allExercises = [];
   List<Exercise> _filteredExercises = [];
-  String _selectedMuscleGroup = 'Todos';
+  String _selectedCategory = 'Todos';
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
 
-  final List<String> _muscleGroupsFilter = ['Todos', ...AppConstants.muscleGroups];
+  final List<String> _categoryFilter = ['Todos', ...AppConstants.muscleGroups];
 
   @override
   void initState() {
@@ -31,9 +31,9 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
 
   Future<void> _loadExercises() async {
     setState(() => _isLoading = true);
-    
+
     final exercises = await _databaseHelper.getAllExercises();
-    
+
     setState(() {
       _allExercises = exercises;
       _filteredExercises = exercises;
@@ -44,17 +44,20 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   void _filterExercises() {
     setState(() {
       _filteredExercises = _allExercises.where((exercise) {
-        final matchesSearch = exercise.name
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase()) ||
-            exercise.description
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase());
-            
-        final matchesMuscleGroup = _selectedMuscleGroup == 'Todos' ||
-            exercise.muscleGroup == _selectedMuscleGroup;
-            
-        return matchesSearch && matchesMuscleGroup;
+        final matchesSearch =
+            exercise.name.toLowerCase().contains(
+              _searchController.text.toLowerCase(),
+            ) ||
+            (exercise.description?.toLowerCase().contains
+            (
+            _searchController.text.toLowerCase(),
+            ) ?? false); 
+
+        final matchesCategoty =
+            _selectedCategory == 'Todos' ||
+            exercise.category == _selectedCategory;
+
+        return matchesSearch && matchesCategoty;
       }).toList();
     });
   }
@@ -63,10 +66,8 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   void _editExercise(Exercise exercise) {
     showDialog(
       context: context,
-      builder: (context) => EditExerciseDialog(
-        exercise: exercise,
-        onUpdated: _loadExercises,
-      ),
+      builder: (context) =>
+          EditExerciseDialog(exercise: exercise, onUpdated: _loadExercises),
     );
   }
 
@@ -191,17 +192,17 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                   onChanged: (_) => _filterExercises(),
                 ),
                 SizedBox(height: 12),
-                
+
                 // Filtro por grupo muscular
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: _muscleGroupsFilter.map((group) {
-                      final isSelected = group == _selectedMuscleGroup;
-                      final color = group == 'Todos' 
+                    children: _categoryFilter.map((group) {
+                      final isSelected = group == _selectedCategory;
+                      final color = group == 'Todos'
                           ? Colors.grey[700]
-                          : AppConstants.muscleGroupColors[group];
-                          
+                          : AppConstants.categoryColors[group];
+
                       return Padding(
                         padding: EdgeInsets.only(right: 8),
                         child: FilterChip(
@@ -209,7 +210,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                           selected: isSelected,
                           onSelected: (selected) {
                             setState(() {
-                              _selectedMuscleGroup = group;
+                              _selectedCategory = group;
                             });
                             _filterExercises();
                           },
@@ -217,8 +218,8 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                           checkmarkColor: color,
                           backgroundColor: Colors.white,
                           side: BorderSide(
-                            color: isSelected 
-                                ? color ?? Colors.grey 
+                            color: isSelected
+                                ? color ?? Colors.grey
                                 : Colors.grey[300]!,
                           ),
                         ),
@@ -240,10 +241,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                   SizedBox(width: 4),
                   Text(
                     '${_filteredExercises.length} exercícios encontrados',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   Spacer(),
                   Text(
@@ -263,8 +261,8 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
                 : _filteredExercises.isEmpty
-                    ? _buildEmptyState()
-                    : _buildExercisesList(),
+                ? _buildEmptyState()
+                : _buildExercisesList(),
           ),
         ],
       ),
@@ -278,38 +276,28 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 80,
-              color: Colors.grey[300],
-            ),
+            Icon(Icons.search_off, size: 80, color: Colors.grey[300]),
             SizedBox(height: 16),
             Text(
               _searchController.text.isEmpty
                   ? 'Nenhum exercício encontrado'
                   : 'Nenhum resultado para "${_searchController.text}"',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             if (_searchController.text.isNotEmpty) ...[
               SizedBox(height: 8),
               Text(
                 'Tente ajustar sua pesquisa ou filtros',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               ),
             ],
-            if (_selectedMuscleGroup != 'Todos') ...[
+            if (_selectedCategory != 'Todos') ...[
               SizedBox(height: 16),
               TextButton(
                 onPressed: () {
                   setState(() {
-                    _selectedMuscleGroup = 'Todos';
+                    _selectedCategory = 'Todos';
                   });
                   _filterExercises();
                 },
@@ -337,8 +325,9 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   }
 
   Widget _buildExerciseCard(Exercise exercise) {
-    final color = AppConstants.muscleGroupColors[exercise.muscleGroup] ?? Colors.grey;
-    
+    final color =
+        AppConstants.categoryColors[exercise.category] ?? Colors.grey;
+
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
@@ -351,7 +340,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Icon(
-            _getMuscleGroupIcon(exercise.muscleGroup),
+            _getMuscleGroupIcon(exercise.category),
             color: color,
             size: 24,
           ),
@@ -361,10 +350,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             Expanded(
               child: Text(
                 exercise.name,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
             if (exercise.isCustom) ...[
@@ -396,7 +382,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                 border: Border.all(color: color.withOpacity(0.3)),
               ),
               child: Text(
-                exercise.muscleGroup,
+                exercise.category,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -407,10 +393,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             Spacer(),
             Text(
               _formatDate(exercise.createdAt),
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -454,10 +437,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                   const SizedBox(width: 4),
                   Text(
                     'Padrão',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -480,7 +460,11 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.description, size: 16, color: Colors.grey[600]),
+                          Icon(
+                            Icons.description,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'Descrição:',
@@ -492,20 +476,22 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        exercise.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
+                      if (exercise.description?.isNotEmpty == true) ...
+                      [
+                        SizedBox(height: 4),
+                        Text
+                        (
+                          exercise.description!, 
+                          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-                
+
                 // Instruções
-                if (exercise.instructions != null && exercise.instructions!.isNotEmpty) ...[
+                if (exercise.instructions != null &&
+                    exercise.instructions!.isNotEmpty) ...[
                   SizedBox(height: 12),
                   Container(
                     padding: EdgeInsets.all(12),
@@ -519,7 +505,11 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.assignment, size: 16, color: Colors.blue[600]),
+                            Icon(
+                              Icons.assignment,
+                              size: 16,
+                              color: Colors.blue[600],
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Instruções:',
@@ -543,7 +533,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                     ),
                   ),
                 ],
-                
+
                 // Estatísticas de uso
                 SizedBox(height: 16),
                 FutureBuilder<int>(
@@ -559,7 +549,11 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.bar_chart, size: 16, color: Colors.green[600]),
+                            Icon(
+                              Icons.bar_chart,
+                              size: 16,
+                              color: Colors.green[600],
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Usado em $usageCount treino${usageCount != 1 ? 's' : ''}',
@@ -573,17 +567,32 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                             // ✅ BOTÕES DE AÇÃO RÁPIDA
                             if (exercise.isCustom) ...[
                               IconButton(
-                                icon: Icon(Icons.edit, size: 18, color: Colors.blue[600]),
+                                icon: Icon(
+                                  Icons.edit,
+                                  size: 18,
+                                  color: Colors.blue[600],
+                                ),
                                 onPressed: () => _editExercise(exercise),
                                 tooltip: 'Editar exercício',
-                                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                constraints: BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
                                 padding: EdgeInsets.all(4),
                               ),
                               IconButton(
-                                icon: Icon(Icons.delete, size: 18, color: Colors.red[600]),
-                                onPressed: () => _showDeleteConfirmation(exercise),
+                                icon: Icon(
+                                  Icons.delete,
+                                  size: 18,
+                                  color: Colors.red[600],
+                                ),
+                                onPressed: () =>
+                                    _showDeleteConfirmation(exercise),
                                 tooltip: 'Excluir exercício',
-                                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                constraints: BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
                                 padding: EdgeInsets.all(4),
                               ),
                             ],
@@ -604,12 +613,15 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
 
   Future<int> _getExerciseUsageCount(int exerciseId) async {
     final db = await _databaseHelper.database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT COUNT(DISTINCT workout_id) as count 
       FROM workout_exercises 
       WHERE exercise_id = ?
-    ''', [exerciseId]);
-    
+    ''',
+      [exerciseId],
+    );
+
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -628,6 +640,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
       case 'braços':
       case 'bíceps':
       case 'tríceps':
+      case 'Antebraços':
         return Icons.sports_handball;
       case 'abdômen':
         return Icons.crop_free;

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/exercise.dart';
 import '../models/workout_exercise.dart';
+import '../models/workout_series.dart';
+import '../models/series_type.dart';
 import '../database/database_helper.dart';
 
 class AddWorkoutExerciseDialog extends StatefulWidget {
@@ -23,22 +25,40 @@ class AddWorkoutExerciseDialog extends StatefulWidget {
 
 class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _setsController = TextEditingController(text: '3');
-  final _repsController = TextEditingController(text: '12');
-  final _weightController = TextEditingController();
-  final _restController = TextEditingController(text: '60');
   final _notesController = TextEditingController();
+  final _restController = TextEditingController(text: '60');
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  
   bool _isLoading = false;
+  List<SeriesData> _seriesList = [
+    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
+    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
+    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
+  ];
 
   @override
   void dispose() {
-    _setsController.dispose();
-    _repsController.dispose();
-    _weightController.dispose();
-    _restController.dispose();
     _notesController.dispose();
+    _restController.dispose();
     super.dispose();
+  }
+
+  void _addSeries() {
+    setState(() {
+      _seriesList.add(SeriesData(
+        repetitions: _seriesList.isNotEmpty ? _seriesList.last.repetitions : 12,
+        weight: _seriesList.isNotEmpty ? _seriesList.last.weight : null,
+        type: SeriesType.valid,
+      ));
+    });
+  }
+
+  void _removeSeries(int index) {
+    if (_seriesList.length > 1) {
+      setState(() {
+        _seriesList.removeAt(index);
+      });
+    }
   }
 
   Future<void> _addExerciseToWorkout() async {
@@ -50,213 +70,404 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
       // Pega o próximo order_index
       final existingCount = await _dbHelper.getWorkoutExerciseCount(widget.workoutId);
       
-      final workoutExercise = WorkoutExercise(
-        workoutId: widget.workoutId,
-        exerciseId: widget.selectedExercise.id!,
-        sets: int.parse(_setsController.text),
-        reps: int.parse(_repsController.text),
-        weight: _weightController.text.isEmpty ? null : double.parse(_weightController.text),
-        restTime: _restController.text.isEmpty ? null : int.parse(_restController.text),
-        orderIndex: existingCount,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-      );
+      // Usar valores da primeira série para compatibilidade
+      final firstSeries = _seriesList.first;
+      
+      // Criar o WorkoutExercise
+     final workoutExercise = WorkoutExercise(
+      workoutId: widget.workoutId,
+      exerciseId: widget.selectedExercise.id!,
+      order: existingCount, // em vez de orderIndex
+      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      createdAt: DateTime.now(),
+    );
 
-      await _dbHelper.insertWorkoutExercise(workoutExercise);
+    // Salva o WorkoutExercise e obtém o ID
+    final workoutExerciseId = await _dbHelper.insertWorkoutExercise(workoutExercise);
+
+    // Cria as séries vinculadas a esse WorkoutExercise
+    List<WorkoutSeries> seriesList = [];
+    for (int i = 0; i < _seriesList.length; i++) {
+      final seriesData = _seriesList[i];
+      final series = WorkoutSeries(
+        workoutExerciseId: workoutExerciseId,
+        seriesNumber: i + 1,
+        repetitions: seriesData.repetitions,
+        weight: seriesData.weight,
+        restSeconds: seriesData.type == SeriesType.rest
+            ? seriesData.restSeconds
+            : (i < _seriesList.length - 1 ? int.tryParse(_restController.text) : null),
+        type: seriesData.type,
+        notes: seriesData.notes,
+      );
+      seriesList.add(series);
+    }
+
+    // Salva todas as séries no banco
+    await _dbHelper.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
+
       
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
         widget.onExerciseAdded();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${widget.selectedExercise.name} adicionado ao treino!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccessMessage();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao adicionar exercício: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorMessage('Erro ao adicionar exercício: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  void _showSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('${widget.selectedExercise.name} adicionado ao treino!'),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green[600],
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue[50]!, Colors.blue[100]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Row(
         children: [
-          const Row(
-            children: [
-              Icon(Icons.add_circle, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Configurar Exercício'),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue[600],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.info,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            widget.selectedExercise.name,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.normal,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.selectedExercise.category ?? 'Exercício',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
+                    fontSize: 14,
+                  ),
+                ),
+               if (widget.selectedExercise.description?.isNotEmpty == true) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    widget.selectedExercise.description!, 
+                    style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[600],
+                    height: 1.2,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Informações do exercício selecionado
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.blue[600],
-                      size: 20,
+    );
+  }
+
+  Widget _buildSeriesCard(int index) {
+    final seriesData = _seriesList[index];
+    
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // Cabeçalho da série
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.blue[600],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.selectedExercise.muscleGroup,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                          Text(
-                            widget.selectedExercise.description,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                const Expanded(
+                  child: Text(
+                    'Série',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                
+                // Botão remover
+                if (_seriesList.length > 1)
+                  IconButton(
+                    onPressed: () => _removeSeries(index),
+                    icon: Icon(Icons.remove_circle, color: Colors.red[600]),
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Campos da série
+            Row(
+              children: [
+                // Repetições
+                Expanded(
+                  child: TextFormField(
+                    initialValue: seriesData.repetitions?.toString() ?? '12',
+                    decoration: InputDecoration(
+                      labelText: 'Repetições',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      prefixIcon: const Icon(Icons.repeat, size: 20),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Obrigatório';
+                      final reps = int.tryParse(value);
+                      if (reps == null || reps <= 0) return 'Deve ser > 0';
+                      if (reps > 999) return 'Máximo 999';
+                      return null;
+                    },
+                    onChanged: (value) {
+                      final reps = int.tryParse(value);
+                      setState(() {
+                        _seriesList[index].repetitions = reps;
+                      });
+                    },
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Peso
+                Expanded(
+                  child: TextFormField(
+                    initialValue: seriesData.weight?.toString() ?? '',
+                    decoration: InputDecoration(
+                      labelText: 'Peso (kg)',
+                      hintText: 'Opcional',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      prefixIcon: const Icon(Icons.fitness_center, size: 20),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        final weight = double.tryParse(value);
+                        if (weight == null) return 'Inválido';
+                        if (weight > 9999) return 'Máximo 9999kg';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {
+                      final weight = value.isEmpty ? null : double.tryParse(value);
+                      setState(() {
+                        _seriesList[index].weight = weight;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[600],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.add_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Configurar Exercício',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.selectedExercise.name,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildInfoCard(),
+                const SizedBox(height: 20),
+                
+                // Título das séries
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Séries (${_seriesList.length})',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _seriesList.length < 10 ? _addSeries : null,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Adicionar'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.blue[600],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Séries e Repetições
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _setsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Séries',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.repeat),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Obrigatório';
-                        }
-                        final number = int.tryParse(value);
-                        if (number == null || number <= 0) {
-                          return 'Deve ser > 0';
-                        }
-                        return null;
-                      },
-                    ),
+                const SizedBox(height: 8),
+                
+                // Lista de séries
+                ...List.generate(_seriesList.length, (index) => 
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _buildSeriesCard(index),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _repsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Repetições',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.fitness_center),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Obrigatório';
-                        }
-                        final number = int.tryParse(value);
-                        if (number == null || number <= 0) {
-                          return 'Deve ser > 0';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Peso e Descanso
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Peso (kg)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.line_weight),
-                        hintText: 'Opcional',
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _restController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descanso (s)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.timer),
-                        hintText: 'Opcional',
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Observações
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Observações (opcional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.note),
-                  hintText: 'Ex: Foco na forma, técnica específica...',
                 ),
-                maxLines: 2,
-              ),
-            ],
+                
+                const SizedBox(height: 16),
+                
+                // Tempo de descanso
+                TextFormField(
+                  controller: _restController,
+                  decoration: InputDecoration(
+                    labelText: 'Tempo de Descanso (segundos)',
+                    hintText: 'Ex: 60, 90, 120...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.timer, color: Colors.blue[600]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      final rest = int.tryParse(value);
+                      if (rest == null || rest <= 0) return 'Deve ser > 0';
+                      if (rest > 3600) return 'Máximo 3600s (1h)';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Observações
+                TextFormField(
+                  controller: _notesController,
+                  decoration: InputDecoration(
+                    labelText: 'Observações (opcional)',
+                    hintText: 'Ex: Foco na forma, técnica específica...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.note, color: Colors.blue[600]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                  maxLines: 2,
+                  maxLength: 500,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -270,6 +481,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue[600],
             foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: _isLoading
               ? const SizedBox(
@@ -285,4 +497,21 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
       ],
     );
   }
+}
+
+// Classe auxiliar para gerenciar dados das séries
+class SeriesData {
+  int? repetitions;
+  double? weight;
+  int? restSeconds;
+  SeriesType type;
+  String? notes;
+  
+  SeriesData({
+    this.repetitions,
+    this.weight,
+    this.restSeconds,
+    this.type = SeriesType.valid,
+    this.notes,
+  });
 }
