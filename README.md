@@ -1,16 +1,12 @@
-# gym_craft
+# Gym Craft 🏋️‍♂️  
 
-A new Flutter project.
+App Android para **montar e organizar treinos de academia**.  
 
-## Getting Started
+## Funcionalidades  
+- Criar treinos personalizados  
+- Adicionar exercícios (séries, repetições, peso)  
+- Editar e excluir treinos  
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Como rodar  
+```bash
+git clone https://github.com/TacioMoreira25/gym_craft.git
