@@ -53,7 +53,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Informações da rotina
               Card(
                 child: Padding(
                   padding: EdgeInsets.all(16),
@@ -92,13 +91,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
                           prefixIcon: Icon(Icons.description),
                           hintText: 'Descreva o objetivo desta rotina...',
                         ),
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Descrição é obrigatória';
-                          }
-                          return null;
-                        },
                       ),
                     ],
                   ),
@@ -106,7 +98,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               ),
               SizedBox(height: 20),
 
-              // Sugestões de nomes
               Text(
                 'Sugestões de Nomes',
                 style: TextStyle(

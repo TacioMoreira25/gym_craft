@@ -127,12 +127,6 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
                 ),
                 maxLines: 3,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Descrição é obrigatória';
-                  }
-                  if (value.trim().length < 10) {
-                    return 'Descrição deve ter pelo menos 10 caracteres';
-                  }
                   return null;
                 },
               ),
