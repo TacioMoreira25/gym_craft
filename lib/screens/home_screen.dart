@@ -208,9 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               _showDeleteDialog(routine);
                             } else if (value == 'edit') {
                               _editRoutine(routine);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Edição em desenvolvimento')),
-                              );
                             }
                           },
                         ),
@@ -321,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Rotina "${routine.name}" excluída com sucesso!'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.red,
                   ),
                 );
               },

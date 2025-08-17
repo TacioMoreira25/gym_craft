@@ -9,6 +9,7 @@ class WorkoutSeries {
   int? restSeconds;
   SeriesType type;
   String? notes;
+  DateTime? createdAt;
 
   WorkoutSeries({
     this.id,
@@ -19,6 +20,7 @@ class WorkoutSeries {
     this.restSeconds,
     this.type = SeriesType.valid,
     this.notes,
+    this.createdAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -31,45 +33,50 @@ class WorkoutSeries {
       'rest_seconds': restSeconds,
       'type': type.name,
       'notes': notes,
+      'created_at': (createdAt ?? DateTime.now()).millisecondsSinceEpoch,
     };
   }
 
   factory WorkoutSeries.fromMap(Map<String, dynamic> map) {
     return WorkoutSeries(
-      id: map['id'] ?? 0,
-      workoutExerciseId: map['workoutExerciseId'] ?? 0,
-      seriesNumber: map['seriesNumber'] ?? 1,
+      id: map['id'],
+      workoutExerciseId: map['workout_exercise_id'], 
+      seriesNumber: map['series_number'], 
+      repetitions: map['repetitions'], 
+      weight: map['weight']?.toDouble(),
+      restSeconds: map['rest_seconds'], 
       type: SeriesType.values.firstWhere(
-        (e) => e.toString().split('.').last == map['type'],
+        (e) => e.name == map['type'],
         orElse: () => SeriesType.valid,
       ),
-      repetitions: map['reps'],
-      weight: map['weight']?.toDouble(),
-      restSeconds: map['rest_seconds'],
       notes: map['notes'],
+      createdAt: map['created_at'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(map['created_at'])
+          : null,
     );
   }
 
   WorkoutSeries copyWith({
     int? id,
-    int? routineId,
-    int? exerciseId,
-    int? seriesOrder,
-    SeriesType? type,
-    int? reps,
+    int? workoutExerciseId,
+    int? seriesNumber,
+    int? repetitions,
     double? weight,
     int? restSeconds,
+    SeriesType? type,
     String? notes,
+    DateTime? createdAt,
   }) {
     return WorkoutSeries(
       id: id ?? this.id,
       workoutExerciseId: workoutExerciseId ?? this.workoutExerciseId,
-      seriesNumber: seriesOrder ?? this.seriesNumber,
-      type: type ?? this.type,
+      seriesNumber: seriesNumber ?? this.seriesNumber,
       repetitions: repetitions ?? this.repetitions,
       weight: weight ?? this.weight,
       restSeconds: restSeconds ?? this.restSeconds,
+      type: type ?? this.type,
       notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 

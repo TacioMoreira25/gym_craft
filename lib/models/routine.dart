@@ -26,10 +26,10 @@ class Routine {
   factory Routine.fromMap(Map<String, dynamic> map) {
     return Routine(
       id: map['id'],
-      name: map['name'],
+      name: map['name'] ?? '',
       description: map['description'], 
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
-      isActive: map['is_active'] == 1,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] ?? 0),
+      isActive: (map['is_active'] ?? 1) == 1,
     );
   }
 }

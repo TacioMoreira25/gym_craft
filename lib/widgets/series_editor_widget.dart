@@ -63,7 +63,7 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
     setState(() {
       series.removeAt(index);
       for (int i = 0; i < series.length; i++) {
-        series[i] = series[i].copyWith(seriesOrder: i + 1);
+        series[i] = series[i].copyWith(seriesNumber: i + 1);
       }
     });
     widget.onSeriesChanged(series);
@@ -228,7 +228,7 @@ class _SeriesCardState extends State<_SeriesCard> {
   void _updateSeries() {
     final updatedSeries = widget.series.copyWith(
       type: _selectedType,
-      reps: _repsController.text.isEmpty
+      repetitions: _repsController.text.isEmpty
           ? null
           : int.tryParse(_repsController.text),
       weight: _weightController.text.isEmpty

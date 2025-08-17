@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
+import '../models/workout_exercise.dart';
+import '../models/workout_series.dart';
+import '../models/series_type.dart';
 import '../screens/select_exercise_screen.dart';
 import '../widgets/add_workout_exercise_dialog.dart';
 import '../utils/constants.dart';
@@ -18,7 +21,7 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
-  List<Map<String, dynamic>> _workoutExercises = [];
+  List<WorkoutExercise> _workoutExercises = [];
   bool _isLoading = true;
 
   @override
@@ -28,16 +31,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _loadWorkoutExercises() async {
+    if (!mounted) return;
+    
     setState(() => _isLoading = true);
     try {
-      final exercises = await _databaseHelper.getWorkoutExercises(widget.workout.id!);
-      setState(() {
-        _workoutExercises = exercises;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
+      final exercises = await _databaseHelper.getWorkoutExercisesWithDetails(widget.workout.id!);
       if (mounted) {
+        setState(() {
+          _workoutExercises = exercises;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao carregar exercícios: $e'),
@@ -55,66 +62,97 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       ),
     );
 
-    if (selectedExercise != null) {
+    if (selectedExercise != null && mounted) {
       await showDialog(
         context: context,
         builder: (context) => AddWorkoutExerciseDialog(
           workoutId: widget.workout.id!,
           selectedExercise: selectedExercise,
           onExerciseAdded: () {
-            _loadWorkoutExercises();
+            if (mounted) _loadWorkoutExercises();
           },
         ),
       );
     }
   }
 
-  void _editWorkoutExercise(Map<String, dynamic> exerciseData) {
-  showDialog(
-    context: context,
-    builder: (context) => EditWorkoutExerciseDialog(
-      workoutExerciseData: exerciseData,
-      onUpdated: _loadWorkoutExercises,
-    ),
-  );
-}
+  Future<void> _editWorkoutExercise(WorkoutExercise workoutExercise) async {
+    // Converter WorkoutExercise para o formato esperado pelo dialog
+    final exerciseData = {
+      'id': workoutExercise.id,
+      'workout_id': workoutExercise.workoutId,
+      'exercise_id': workoutExercise.exerciseId,
+      'order_index': workoutExercise.orderIndex,
+      'notes': workoutExercise.notes,
+      'created_at': workoutExercise.createdAt.millisecondsSinceEpoch,
+      'exercise_name': workoutExercise.exercise?.name ?? 'Exercício',
+      'category': workoutExercise.exercise?.category ?? '',
+      'description': workoutExercise.exercise?.description ?? '',
+      'instructions': workoutExercise.exercise?.instructions ?? '',
+    };
 
-  void _deleteExercise(Map<String, dynamic> exerciseData) {
+    if (!mounted) return;
+    
+    await showDialog(
+      context: context,
+      builder: (context) => EditWorkoutExerciseDialog(
+        workoutExerciseData: exerciseData,
+        onUpdated: () {}, // Callback vazio
+      ),
+    );
+
+    // Sempre recarrega após fechar o dialog
+    // Usar um pequeno delay para evitar conflitos de framework
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    if (mounted) {
+      await _loadWorkoutExercises();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Exercício atualizado com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _deleteExercise(WorkoutExercise workoutExercise) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Confirmar Exclusão'),
-          content: Text('Tem certeza que deseja remover "${exerciseData['exercise_name']}" deste treino?'),
+          title: const Text('Confirmar Exclusão'),
+          content: Text('Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancelar'),
+              child: const Text('Cancelar'),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseHelper.deleteWorkoutExercise(exerciseData['id']);
-                _loadWorkoutExercises();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Exercício removido do treino!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                await _databaseHelper.deleteWorkoutExercise(workoutExercise.id!);
+                if (mounted) {
+                  _loadWorkoutExercises();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Exercício removido do treino!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: Text('Remover'),
+              child: const Text('Remover'),
             ),
           ],
         );
       },
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +163,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              _addExercise();
-            },
+            onPressed: _addExercise,
           ),
         ],
       ),
@@ -158,10 +194,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           ),
                           _buildStatCard(
                             'Séries Total',
-                            _workoutExercises.fold<int>(
-                              0, 
-                              (sum, ex) => sum + (ex['sets'] as int? ?? 0)
-                            ).toString(),
+                            _getTotalSeries().toString(),
                             Icons.repeat,
                           ),
                           _buildStatCard(
@@ -183,8 +216,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           padding: const EdgeInsets.all(16),
                           itemCount: _workoutExercises.length,
                           itemBuilder: (context, index) {
-                            final exerciseData = _workoutExercises[index];
-                            return _buildExerciseCard(exerciseData, index);
+                            final workoutExercise = _workoutExercises[index];
+                            return _buildExerciseCard(workoutExercise, index);
                           },
                         ),
                 ),
@@ -197,7 +230,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(height: 8),
+        const SizedBox(width: 8),
         Text(
           value,
           style: const TextStyle(
@@ -266,8 +299,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
-  Widget _buildExerciseCard(Map<String, dynamic> exerciseData, int index) {
-    final muscleGroupColor = AppConstants.categoryColors[exerciseData['muscle_group']] ?? Colors.grey;
+  Widget _buildExerciseCard(WorkoutExercise workoutExercise, int index) {
+    final exercise = workoutExercise.exercise;
+    final series = workoutExercise.series;
+    final muscleGroupColor = AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -310,14 +345,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        exerciseData['exercise_name'] ?? 'Exercício',
+                        exercise?.name ?? 'Exercício',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        exerciseData['muscle_group'] ?? '',
+                        exercise?.category ?? '',
                         style: TextStyle(
                           fontSize: 14,
                           color: muscleGroupColor,
@@ -356,61 +391,72 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   onSelected: (value) {
                     switch (value) {
                       case 'edit':
-                        _editWorkoutExercise(exerciseData);
+                        _editWorkoutExercise(workoutExercise);
                         break;
                       case 'delete':
-                        _deleteExercise(exerciseData);
+                        _deleteExercise(workoutExercise);
                         break;
                     }
                   },
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            
-            // Configurações do treino
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
+
+            // Detalhes das séries
+            if (series.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Séries configuradas:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                  fontSize: 14,
+                ),
               ),
-              child: Row(
-                children: [
-                  _buildConfigItem(
-                    Icons.repeat,
-                    'Séries',
-                    exerciseData['sets']?.toString() ?? '0',
-                  ),
-                  const SizedBox(width: 16),
-                  _buildConfigItem(
-                    Icons.fitness_center,
-                    'Reps',
-                    exerciseData['reps']?.toString() ?? '0',
-                  ),
-                  if (exerciseData['weight'] != null) ...[
-                    const SizedBox(width: 16),
-                    _buildConfigItem(
-                      Icons.monitor_weight,
-                      'Peso',
-                      '${exerciseData['weight']}kg',
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: series.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final s = entry.value;
+                  final seriesTypeColor = AppConstants.getSeriesTypeColor(s.type);
+                  final seriesTypeName = AppConstants.getSeriesTypeName(s.type);
+                  
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: seriesTypeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: seriesTypeColor.withOpacity(0.3)),
                     ),
-                  ],
-                  if (exerciseData['rest_time'] != null) ...[
-                    const SizedBox(width: 16),
-                    _buildConfigItem(
-                      Icons.timer,
-                      'Descanso',
-                      '${exerciseData['rest_time']}s',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          AppConstants.getSeriesTypeIcon(s.type),
+                          size: 12,
+                          color: seriesTypeColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _buildSeriesText(s, index + 1, seriesTypeName),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: seriesTypeColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ],
+                  );
+                }).toList(),
               ),
-            ),
+            ],
             
             // Notas (se houver)
-            if (exerciseData['notes'] != null && exerciseData['notes'].toString().isNotEmpty) ...[
-              const SizedBox(height: 8),
+            if (workoutExercise.notes != null && workoutExercise.notes!.isNotEmpty) ...[
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
@@ -426,7 +472,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        exerciseData['notes'].toString(),
+                        workoutExercise.notes!,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.amber[800],
@@ -443,37 +489,46 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
-  Widget _buildConfigItem(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 4),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
+  String _buildSeriesText(WorkoutSeries series, int seriesNumber, String typeName) {
+    switch (series.type) {
+      case SeriesType.rest:
+        return '$seriesNumberª $typeName: ${series.restSeconds ?? 0}s';
+      
+      case SeriesType.warmup:
+      case SeriesType.recognition:
+        return '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
+      
+      default:
+        String text = '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
+        if (series.weight != null && series.weight! > 0) {
+          text += ' | ${series.weight}kg';
+        }
+        if (series.restSeconds != null && series.restSeconds! > 0) {
+          text += ' | ${series.restSeconds}s desc';
+        }
+        return text;
+    }
+  }
+
+  int _getTotalSeries() {
+    return _workoutExercises.fold<int>(0, (sum, ex) => sum + ex.series.length);
   }
 
   int _calculateEstimatedTime() {
     int totalTime = 0;
-    for (final exercise in _workoutExercises) {
-      final sets = exercise['sets'] as int? ?? 0;
-      final restTime = exercise['rest_time'] as int? ?? 60;
+    for (final workoutExercise in _workoutExercises) {
+      final series = workoutExercise.series;
       
-      // Tempo estimado: 30s por série + tempo de descanso
-      totalTime += (sets * 30) + ((sets - 1) * restTime);
+      for (final s in series) {
+        if (s.type == SeriesType.rest) {
+          totalTime += s.restSeconds ?? 30;
+        } else {
+          totalTime += 30; // Tempo estimado de execução
+          if (s.restSeconds != null) {
+            totalTime += s.restSeconds!; // Tempo de descanso
+          }
+        }
+      }
     }
     return (totalTime / 60).ceil(); // Converte para minutos
   }

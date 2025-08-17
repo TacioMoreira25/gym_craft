@@ -1,4 +1,3 @@
-// lib/widgets/add_workout_exercise_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/exercise.dart';
@@ -26,28 +25,28 @@ class AddWorkoutExerciseDialog extends StatefulWidget {
 class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
-  final _restController = TextEditingController(text: '60');
   final DatabaseHelper _dbHelper = DatabaseHelper();
   
   bool _isLoading = false;
   List<SeriesData> _seriesList = [
-    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
-    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
-    SeriesData(repetitions: 12, weight: null, type: SeriesType.valid),
+    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
+    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
+    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
   ];
 
   @override
   void dispose() {
     _notesController.dispose();
-    _restController.dispose();
     super.dispose();
   }
 
   void _addSeries() {
     setState(() {
+      final lastSeries = _seriesList.isNotEmpty ? _seriesList.last : null;
       _seriesList.add(SeriesData(
-        repetitions: _seriesList.isNotEmpty ? _seriesList.last.repetitions : 12,
-        weight: _seriesList.isNotEmpty ? _seriesList.last.weight : null,
+        repetitions: lastSeries?.repetitions ?? 12,
+        weight: lastSeries?.weight ?? 0.0,
+        restSeconds: lastSeries?.restSeconds ?? 60,
         type: SeriesType.valid,
       ));
     });
@@ -68,44 +67,39 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
 
     try {
       // Pega o próximo order_index
-      final existingCount = await _dbHelper.getWorkoutExerciseCount(widget.workoutId);
-      
-      // Usar valores da primeira série para compatibilidade
-      final firstSeries = _seriesList.first;
+      final nextOrder = await _dbHelper.getNextWorkoutExerciseOrder(widget.workoutId);
       
       // Criar o WorkoutExercise
-     final workoutExercise = WorkoutExercise(
-      workoutId: widget.workoutId,
-      exerciseId: widget.selectedExercise.id!,
-      order: existingCount, // em vez de orderIndex
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-      createdAt: DateTime.now(),
-    );
-
-    // Salva o WorkoutExercise e obtém o ID
-    final workoutExerciseId = await _dbHelper.insertWorkoutExercise(workoutExercise);
-
-    // Cria as séries vinculadas a esse WorkoutExercise
-    List<WorkoutSeries> seriesList = [];
-    for (int i = 0; i < _seriesList.length; i++) {
-      final seriesData = _seriesList[i];
-      final series = WorkoutSeries(
-        workoutExerciseId: workoutExerciseId,
-        seriesNumber: i + 1,
-        repetitions: seriesData.repetitions,
-        weight: seriesData.weight,
-        restSeconds: seriesData.type == SeriesType.rest
-            ? seriesData.restSeconds
-            : (i < _seriesList.length - 1 ? int.tryParse(_restController.text) : null),
-        type: seriesData.type,
-        notes: seriesData.notes,
+      final workoutExercise = WorkoutExercise(
+        workoutId: widget.workoutId,
+        exerciseId: widget.selectedExercise.id!,
+        orderIndex: nextOrder, // Usar orderIndex correto
+        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        createdAt: DateTime.now(),
       );
-      seriesList.add(series);
-    }
 
-    // Salva todas as séries no banco
-    await _dbHelper.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
+      // Salva o WorkoutExercise e obtém o ID
+      final workoutExerciseId = await _dbHelper.insertWorkoutExercise(workoutExercise);
 
+      // Cria as séries vinculadas a esse WorkoutExercise
+      List<WorkoutSeries> seriesList = [];
+      for (int i = 0; i < _seriesList.length; i++) {
+        final seriesData = _seriesList[i];
+        final series = WorkoutSeries(
+          workoutExerciseId: workoutExerciseId,
+          seriesNumber: i + 1,
+          repetitions: seriesData.repetitions,
+          weight: seriesData.weight,
+          restSeconds: seriesData.restSeconds, // Descanso individual por série
+          type: seriesData.type,
+          notes: seriesData.notes,
+          createdAt: DateTime.now(), // Adicionar createdAt
+        );
+        seriesList.add(series);
+      }
+
+      // Salva todas as séries no banco
+      await _dbHelper.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
       
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -198,14 +192,14 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                     fontSize: 14,
                   ),
                 ),
-               if (widget.selectedExercise.description?.isNotEmpty == true) ...[
-                  SizedBox(height: 2),
+                if (widget.selectedExercise.description?.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    widget.selectedExercise.description!, 
+                    widget.selectedExercise.description!,
                     style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue[600],
-                    height: 1.2,
+                      fontSize: 12,
+                      color: Colors.blue[600],
+                      height: 1.2,
                     ),
                   ),
                 ],
@@ -273,68 +267,101 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
             const SizedBox(height: 12),
             
             // Campos da série
-            Row(
+            Column(
               children: [
-                // Repetições
-                Expanded(
-                  child: TextFormField(
-                    initialValue: seriesData.repetitions?.toString() ?? '12',
-                    decoration: InputDecoration(
-                      labelText: 'Repetições',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      prefixIcon: const Icon(Icons.repeat, size: 20),
+                Row(
+                  children: [
+                    // Repetições
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: seriesData.repetitions?.toString() ?? '12',
+                        decoration: InputDecoration(
+                          labelText: 'Repetições',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          prefixIcon: const Icon(Icons.repeat, size: 20),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Obrigatório';
+                          final reps = int.tryParse(value);
+                          if (reps == null || reps <= 0) return 'Deve ser > 0';
+                          if (reps > 999) return 'Máximo 999';
+                          return null;
+                        },
+                        onChanged: (value) {
+                          final reps = int.tryParse(value) ?? 12;
+                          setState(() {
+                            _seriesList[index].repetitions = reps;
+                          });
+                        },
+                      ),
                     ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Obrigatório';
-                      final reps = int.tryParse(value);
-                      if (reps == null || reps <= 0) return 'Deve ser > 0';
-                      if (reps > 999) return 'Máximo 999';
-                      return null;
-                    },
-                    onChanged: (value) {
-                      final reps = int.tryParse(value);
-                      setState(() {
-                        _seriesList[index].repetitions = reps;
-                      });
-                    },
-                  ),
+                    
+                    const SizedBox(width: 12),
+                    
+                    // Peso
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: seriesData.weight?.toString() ?? '0',
+                        decoration: InputDecoration(
+                          labelText: 'Peso (kg)',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          prefixIcon: const Icon(Icons.fitness_center, size: 20),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        ],
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            final weight = double.tryParse(value);
+                            if (weight == null) return 'Inválido';
+                            if (weight > 9999) return 'Máximo 9999kg';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          final weight = double.tryParse(value) ?? 0.0;
+                          setState(() {
+                            _seriesList[index].weight = weight;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 
-                const SizedBox(width: 12),
+                const SizedBox(height: 12),
                 
-                // Peso
-                Expanded(
-                  child: TextFormField(
-                    initialValue: seriesData.weight?.toString() ?? '',
-                    decoration: InputDecoration(
-                      labelText: 'Peso (kg)',
-                      hintText: 'Opcional',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      prefixIcon: const Icon(Icons.fitness_center, size: 20),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                    ],
-                    validator: (value) {
-                      if (value != null && value.isNotEmpty) {
-                        final weight = double.tryParse(value);
-                        if (weight == null) return 'Inválido';
-                        if (weight > 9999) return 'Máximo 9999kg';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) {
-                      final weight = value.isEmpty ? null : double.tryParse(value);
-                      setState(() {
-                        _seriesList[index].weight = weight;
-                      });
-                    },
+                // Tempo de descanso individual
+                TextFormField(
+                  initialValue: seriesData.restSeconds?.toString() ?? '60',
+                  decoration: InputDecoration(
+                    labelText: 'Descanso (segundos)',
+                    hintText: 'Ex: 60, 90, 120...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    prefixIcon: const Icon(Icons.timer, size: 20),
                   ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      final rest = int.tryParse(value);
+                      if (rest == null || rest < 0) return 'Deve ser ≥ 0';
+                      if (rest > 3600) return 'Máximo 3600s (1h)';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    final rest = int.tryParse(value) ?? 60;
+                    setState(() {
+                      _seriesList[index].restSeconds = rest;
+                    });
+                  },
                 ),
               ],
             ),
@@ -426,30 +453,6 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   ),
                 ),
                 
-                const SizedBox(height: 16),
-                
-                // Tempo de descanso
-                TextFormField(
-                  controller: _restController,
-                  decoration: InputDecoration(
-                    labelText: 'Tempo de Descanso (segundos)',
-                    hintText: 'Ex: 60, 90, 120...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: Icon(Icons.timer, color: Colors.blue[600]),
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      final rest = int.tryParse(value);
-                      if (rest == null || rest <= 0) return 'Deve ser > 0';
-                      if (rest > 3600) return 'Máximo 3600s (1h)';
-                    }
-                    return null;
-                  },
-                ),
                 const SizedBox(height: 16),
                 
                 // Observações

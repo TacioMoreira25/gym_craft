@@ -22,11 +22,16 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'workout_app.db');
+    
     return await openDatabase(
       path,
       version: 2, 
       onCreate: _createTables,
       onUpgrade: _upgradeDatabase,
+      onDowngrade: (db, oldVersion, newVersion) async {
+        await _resetAllTables(db);
+        await _createTables(db, 2);
+      },
     );
   }
 
@@ -37,7 +42,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         description TEXT, 
         created_at INTEGER NOT NULL,
-        is_active INTEGER DEFAULT 1
+        is_active INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -60,7 +65,7 @@ class DatabaseHelper {
         category TEXT NOT NULL,
         instructions TEXT,
         created_at INTEGER NOT NULL,
-        is_custom INTEGER DEFAULT 1
+        is_custom INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -85,7 +90,7 @@ class DatabaseHelper {
         repetitions INTEGER,
         weight REAL,
         rest_seconds INTEGER,
-        type TEXT DEFAULT 'valid',
+        type TEXT NOT NULL DEFAULT 'valid',
         notes TEXT,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises (id) ON DELETE CASCADE
@@ -97,13 +102,90 @@ class DatabaseHelper {
 
   Future<void> _upgradeDatabase(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute('ALTER TABLE routines ALTER COLUMN description DROP NOT NULL');
+      try {
+        await db.execute('CREATE TABLE routines_backup AS SELECT * FROM routines');
+        await db.execute('DROP TABLE routines');
+        
+        await db.execute('''
+          CREATE TABLE routines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT, 
+            created_at INTEGER NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+        
+        await db.execute('''
+          INSERT INTO routines (id, name, description, created_at, is_active)
+          SELECT id, name, description, created_at, COALESCE(is_active, 1)
+          FROM routines_backup
+        ''');
+        
+        await db.execute('DROP TABLE routines_backup');
+      } catch (e) {
+        print('Erro na migração de routines: $e');
+        await db.execute('DROP TABLE IF EXISTS routines_backup');
+      }
       
-      await db.execute('ALTER TABLE exercises RENAME COLUMN muscle_group TO category');
-      await db.execute('ALTER TABLE exercises ALTER COLUMN description DROP NOT NULL');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(exercises)');
+        bool hasMuscleGroup = tableInfo.any((col) => col['name'] == 'muscle_group');
+        bool hasCategory = tableInfo.any((col) => col['name'] == 'category');
+        
+        await db.execute('CREATE TABLE exercises_backup AS SELECT * FROM exercises');
+        await db.execute('DROP TABLE exercises');
+        
+        await db.execute('''
+          CREATE TABLE exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            category TEXT NOT NULL,
+            instructions TEXT,
+            created_at INTEGER NOT NULL,
+            is_custom INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+        
+        String categoryColumn;
+        if (hasMuscleGroup) {
+          categoryColumn = 'muscle_group';
+        } else if (hasCategory) {
+          categoryColumn = 'category';
+        } else {
+          categoryColumn = "'Outros'";
+        }
+        
+        await db.execute('''
+          INSERT INTO exercises (id, name, description, category, instructions, created_at, is_custom)
+          SELECT id, name, 
+                 COALESCE(description, '') as description,
+                 COALESCE($categoryColumn, 'Outros') as category,
+                 instructions,
+                 COALESCE(created_at, ${DateTime.now().millisecondsSinceEpoch}) as created_at,
+                 COALESCE(is_custom, 1) as is_custom
+          FROM exercises_backup
+        ''');
+        
+        await db.execute('DROP TABLE exercises_backup');
+      } catch (e) {
+        print('Erro na migração de exercises: $e');
+        await db.execute('DROP TABLE IF EXISTS exercises_backup');
+        await _insertDefaultExercises(db);
+      }
       
-      await db.execute('DROP TABLE IF EXISTS workout_exercises_old');
-      await db.execute('ALTER TABLE workout_exercises RENAME TO workout_exercises_old');
+      List<Map<String, dynamic>> existingWorkoutExercises = [];
+      try {
+        existingWorkoutExercises = await db.query('workout_exercises');
+        
+        if (existingWorkoutExercises.isNotEmpty) {
+          await db.execute('CREATE TABLE workout_exercises_backup AS SELECT * FROM workout_exercises');
+          await db.execute('DROP TABLE workout_exercises');
+        }
+      } catch (e) {
+        print('Tabela workout_exercises não existe ainda: $e');
+      }
       
       await db.execute('''
         CREATE TABLE workout_exercises (
@@ -118,36 +200,41 @@ class DatabaseHelper {
         )
       ''');
       
-      await db.execute('''
-        INSERT INTO workout_exercises (id, workout_id, exercise_id, order_index, notes, created_at)
-        SELECT id, workout_id, exercise_id, order_index, notes, 
-               CASE WHEN created_at IS NULL THEN ${DateTime.now().millisecondsSinceEpoch} ELSE created_at END
-        FROM workout_exercises_old
-      ''');
+      if (existingWorkoutExercises.isNotEmpty) {
+        try {
+          await db.execute('''
+            INSERT INTO workout_exercises (id, workout_id, exercise_id, order_index, notes, created_at)
+            SELECT id, workout_id, exercise_id, order_index, notes, 
+                   COALESCE(created_at, ${DateTime.now().millisecondsSinceEpoch}) as created_at
+            FROM workout_exercises_backup
+          ''');
+          
+          await db.execute('DROP TABLE workout_exercises_backup');
+        } catch (e) {
+          print('Erro na migração de workout_exercises: $e');
+          await db.execute('DROP TABLE IF EXISTS workout_exercises_backup');
+        }
+      }
       
       await db.execute('''
-        CREATE TABLE series (
+        CREATE TABLE IF NOT EXISTS series (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           workout_exercise_id INTEGER NOT NULL,
           series_number INTEGER NOT NULL,
           repetitions INTEGER,
           weight REAL,
           rest_seconds INTEGER,
-          type TEXT DEFAULT 'valid',
+          type TEXT NOT NULL DEFAULT 'valid',
           notes TEXT,
           created_at INTEGER NOT NULL,
           FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises (id) ON DELETE CASCADE
         )
       ''');
       
-      await db.execute('''
-        INSERT INTO series (workout_exercise_id, series_number, repetitions, weight, rest_seconds, created_at)
-        SELECT id, 1, reps, weight, rest_time, ${DateTime.now().millisecondsSinceEpoch}
-        FROM workout_exercises_old
-        WHERE sets > 0
-      ''');
-      
-      await db.execute('DROP TABLE workout_exercises_old');
+      final exerciseCount = await db.rawQuery('SELECT COUNT(*) as count FROM exercises');
+      if ((exerciseCount.first['count'] as int) == 0) {
+        await _insertDefaultExercises(db);
+      }
     }
   }
 
@@ -166,8 +253,8 @@ class DatabaseHelper {
       Exercise(name: 'Remada Baixa', description: 'Exercício para meio das costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false),
       
       // Pernas
-      Exercise(name: 'Agachamento', description: 'Exercício fundamental para quadríceps', category: 'Quadricps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Leg Press', description: 'Exercício para quadríceps e glúteos', category: 'Quadricps', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Agachamento', description: 'Exercício fundamental para quadríceps', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Leg Press', description: 'Exercício para quadríceps e glúteos', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false),
       Exercise(name: 'Afundo', description: 'Exercício unilateral para pernas', category: 'Posterior', createdAt: DateTime.now(), isCustom: false),
       Exercise(name: 'Stiff', description: 'Exercício para posterior de coxa', category: 'Posterior', createdAt: DateTime.now(), isCustom: false),
       Exercise(name: 'Panturrilha', description: 'Exercício para panturrilhas', category: 'Panturrilhas', createdAt: DateTime.now(), isCustom: false),
@@ -191,14 +278,24 @@ class DatabaseHelper {
     ];
 
     for (Exercise exercise in defaultExercises) {
-      await db.insert('exercises', exercise.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
+      try {
+        await db.insert('exercises', exercise.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
+      } catch (e) {
+        print('Erro ao inserir exercício ${exercise.name}: $e');
+      }
     }
   }
 
   // === CRUD ROTINAS ===
   Future<int> insertRoutine(Routine routine) async {
     final db = await database;
-    return await db.insert('routines', routine.toMap());
+    try {
+      return await db.insert('routines', routine.toMap());
+    } catch (e) {
+      print('Erro ao inserir rotina: $e');
+      print('Dados da rotina: ${routine.toMap()}');
+      rethrow;
+    }
   }
 
   Future<List<Routine>> getAllRoutines() async {
@@ -289,7 +386,6 @@ class DatabaseHelper {
     try {
       return await db.insert('exercises', exercise.toMap());
     } catch (e) {
-      // Se exercício já existe, retorna o ID existente
       final existing = await getExerciseByName(exercise.name);
       if (existing != null) {
         return existing.id!;
@@ -354,7 +450,6 @@ class DatabaseHelper {
     );
   }
 
-  // Verificar se exercício pode ser excluído (não está em uso)
   Future<bool> canDeleteExercise(int exerciseId) async {
     final db = await database;
     final List<Map<String, dynamic>> workoutExercises = await db.query(
@@ -368,7 +463,6 @@ class DatabaseHelper {
   Future<int> deleteExercise(int id) async {
     final db = await database;
     
-    // Verificar se pode excluir
     final canDelete = await canDeleteExercise(id);
     if (!canDelete) {
       throw Exception('Não é possível excluir este exercício pois ele está sendo usado em treinos');
@@ -377,7 +471,6 @@ class DatabaseHelper {
     return await db.delete('exercises', where: 'id = ?', whereArgs: [id]);
   }
 
-  // === CRUD WORKOUT_EXERCISES  ===
   Future<int> insertWorkoutExercise(WorkoutExercise workoutExercise) async {
     final db = await database;
     return await db.insert('workout_exercises', workoutExercise.toMap());
@@ -386,7 +479,6 @@ class DatabaseHelper {
   Future<List<WorkoutExercise>> getWorkoutExercisesWithDetails(int workoutId) async {
     final db = await database;
     
-    // Query com JOIN para pegar dados do exercício
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
         we.*,
@@ -428,7 +520,6 @@ class DatabaseHelper {
     return workoutExercises;
   }
 
-  // Método legado para compatibilidade
   Future<List<Map<String, dynamic>>> getWorkoutExercises(int workoutId) async {
     final db = await database;
     return await db.rawQuery('''
@@ -570,7 +661,6 @@ class DatabaseHelper {
     }
   }
 
-  // Método para criar exercício automaticamente quando adicionar no treino
   Future<int> getOrCreateExercise(String name, String description, String category, {String? instructions}) async {
     // Primeiro tenta encontrar exercício existente
     Exercise? existing = await getExerciseByName(name);
@@ -623,5 +713,43 @@ class DatabaseHelper {
       'exercises_count': Sqflite.firstIntValue(exercisesResult) ?? 0,
       'categories': categoriesResult.map((e) => e['category']).toList(),
     };
+  }
+
+  Future<void> resetDatabase() async {
+    final db = await database;
+    await _resetAllTables(db);
+    await _createTables(db, 2);
+  }
+  
+  Future<void> _resetAllTables(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS series');
+    await db.execute('DROP TABLE IF EXISTS workout_exercises');
+    await db.execute('DROP TABLE IF EXISTS exercises');
+    await db.execute('DROP TABLE IF EXISTS workouts');
+    await db.execute('DROP TABLE IF EXISTS routines');
+  }
+
+  Future<bool> checkDatabaseIntegrity() async {
+    final db = await database;
+    try {
+      final result = await db.rawQuery('PRAGMA integrity_check');
+      return result.first['integrity_check'] == 'ok';
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Método para forçar recriação do banco de dados
+  Future<void> forceRecreateDatabase() async {
+    try {
+      String path = join(await getDatabasesPath(), 'workout_app.db');
+      await deleteDatabase(path);
+      _database = null; // Forçar reinicialização
+      await database; // Recriar banco
+      print('Banco de dados recriado com sucesso');
+    } catch (e) {
+      print('Erro ao recriar banco de dados: $e');
+      rethrow;
+    }
   }
 }
