@@ -5,6 +5,7 @@ import '../models/workout_series.dart';
 import '../models/series_type.dart';
 import '../database/database_helper.dart';
 import '../utils/constants.dart';
+import '../widgets/exercise_image_widget.dart'; 
 
 class EditWorkoutExerciseDialog extends StatefulWidget {
   final Map<String, dynamic> workoutExerciseData;
@@ -185,7 +186,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Header atualizado com imagem e categoria
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -200,24 +201,66 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.edit, color: Theme.of(context).primaryColor),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Editar Exercício',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      // Imagem do exercício
+                      ExerciseImageWidget(
+                        imageUrl: widget.workoutExerciseData['exercise_image_url'],
+                        width: 50,
+                        height: 50,
+                        category: widget.workoutExerciseData['exercise_category'],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      const SizedBox(width: 12),
+                      
+                      // Textos
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.edit, color: Theme.of(context).primaryColor),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Editar Exercício',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              exerciseName,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            // Categoria com ícone
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.fitness_center,
+                                  size: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.workoutExerciseData['exercise_category'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[500],
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    exerciseName,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
                   ),
                 ],
               ),

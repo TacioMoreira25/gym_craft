@@ -1,32 +1,65 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
 import '../models/exercise.dart';
-import '../utils/constants.dart';
+import '../database/database_helper.dart';
+import '../widgets/exercise_image_widget.dart';
 
 class AddExerciseScreen extends StatefulWidget {
-  const AddExerciseScreen({super.key});
+  final Exercise? exercise;
+
+  const AddExerciseScreen({super.key, this.exercise});
 
   @override
   State<AddExerciseScreen> createState() => _AddExerciseScreenState();
 }
 
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _instructionsController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _instructionsController = TextEditingController();
+  final _imageUrlController = TextEditingController();
 
   String _selectedCategory = 'Peito';
   bool _isLoading = false;
+
+  final List<String> _categories = [
+    'Peito',
+    'Costas',
+    'Quadríceps',
+    'Posterior',
+    'Panturrilhas',
+    'Ombros',
+    'Bíceps',
+    'Tríceps',
+    'Abdomen',
+    'Outros',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.exercise != null) {
+      _nameController.text = widget.exercise!.name;
+      _descriptionController.text = widget.exercise!.description ?? '';
+      _instructionsController.text = widget.exercise!.instructions ?? '';
+      _imageUrlController.text = widget.exercise!.imageUrl ?? '';
+      _selectedCategory = widget.exercise!.category;
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
+  }
+
+  bool _isValidUrl(String url) {
+    if (url.isEmpty) return true; 
+    return Uri.tryParse(url) != null && 
+           (url.startsWith('http://') || url.startsWith('https://'));
   }
 
   Future<void> _saveExercise() async {
@@ -36,59 +69,41 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
 
     try {
       final exercise = Exercise(
+        id: widget.exercise?.id,
         name: _nameController.text.trim(),
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
         category: _selectedCategory,
-        description: _descriptionController.text.trim(),
-        instructions: _instructionsController.text.trim().isEmpty
-            ? null
-            : _instructionsController.text.trim(),
-        createdAt: DateTime.now(),
+        instructions: _instructionsController.text.trim().isNotEmpty
+            ? _instructionsController.text.trim()
+            : null,
+        imageUrl: _imageUrlController.text.trim().isNotEmpty
+            ? _imageUrlController.text.trim()
+            : null,
+        createdAt: widget.exercise?.createdAt ?? DateTime.now(),
+        isCustom: widget.exercise?.isCustom ?? true,
       );
 
-      final exerciseId = await _databaseHelper.insertExercise(exercise);
-
-      // Cria exercício com o ID retornado
-      final exerciseWithId = Exercise(
-        id: exerciseId,
-        name: exercise.name,
-        category: exercise.category,
-        description: exercise.description,
-        instructions: exercise.instructions,
-        createdAt: exercise.createdAt,
-      );
-
-      if (mounted) {
+      if (widget.exercise == null) {
+        await DatabaseHelper().insertExercise(exercise);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${exerciseWithId.name} criado com sucesso!'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'Ver',
-              textColor: Colors.white,
-              onPressed: () {
-                // Retorna o exercício criado para seleção automática
-                Navigator.of(context).pop(exerciseWithId);
-              },
-            ),
-          ),
+          const SnackBar(content: Text('Exercício adicionado com sucesso!')),
         );
-
-        // Retorna o exercício criado
-        Navigator.of(context).pop(exerciseWithId);
+      } else {
+        await DatabaseHelper().updateExercise(exercise);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Exercício atualizado com sucesso!')),
+        );
       }
+
+      Navigator.of(context).pop(true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao criar exercício: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar exercício: $e')),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
   }
 
@@ -96,250 +111,165 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Criar Exercício'),
+        title: Text(widget.exercise == null ? 'Adicionar Exercício' : 'Editar Exercício'),
         actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _saveExercise,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'SALVAR',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header visual
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green[400]!, Colors.green[600]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.add_circle,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Novo Exercício',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Crie um exercício personalizado para sua biblioteca',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Formulário
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+            )
+          else
+            TextButton(
+              onPressed: _saveExercise,
+              child: const Text('SALVAR'),
+            ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Preview da imagem
+            if (_imageUrlController.text.isNotEmpty)
+              Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ExerciseImageWidget(
+                    imageUrl: _imageUrlController.text,
+                    width: 120,
+                    height: 120,
+                    category: _selectedCategory,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+            // Campo Nome
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nome do Exercício *',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Por favor, informe o nome do exercício';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Campo Categoria
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: const InputDecoration(
+                labelText: 'Categoria *',
+                border: OutlineInputBorder(),
+              ),
+              items: _categories.map((category) {
+                return DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _selectedCategory = value!);
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Campo URL da Imagem
+            TextFormField(
+              controller: _imageUrlController,
+              decoration: const InputDecoration(
+                labelText: 'URL da Imagem (opcional)',
+                border: OutlineInputBorder(),
+                hintText: 'https://exemplo.com/imagem.jpg',
+                prefixIcon: Icon(Icons.image),
+              ),
+              validator: (value) {
+                if (value != null && value.isNotEmpty && !_isValidUrl(value)) {
+                  return 'Por favor, informe uma URL válida';
+                }
+                return null;
+              },
+              onChanged: (value) {
+                setState(() {}); // Atualizar preview
+              },
+            ),
+
+            const SizedBox(height: 8),
+
+            // Dica sobre imagem
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
+                      Icon(Icons.lightbulb, color: Colors.blue, size: 16),
+                      SizedBox(width: 8),
                       Text(
-                        'Informações Básicas',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Nome
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Nome do Exercício',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.fitness_center),
-                          hintText: 'Ex: Supino reto, Agachamento livre...',
+                        'Como adicionar imagem:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nome é obrigatório';
-                          }
-                          if (value.trim().length < 2) {
-                            return 'Nome muito curto';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Grupo muscular
-                      DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Grupo Muscular',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.category),
-                        ),
-                        items: AppConstants.muscleGroups.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: AppConstants.categoryColors[value],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(value),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedCategory = newValue!;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Descrição
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Descrição',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.description),
-                          hintText: 'Breve descrição do exercício...',
-                        ),
-                        maxLines: 2,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Descrição (opcional)';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Instruções
-                      TextFormField(
-                        controller: _instructionsController,
-                        decoration: InputDecoration(
-                          labelText: 'Instruções (opcional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.assignment),
-                          hintText: 'Como executar, dicas técnicas...',
-                        ),
-                        maxLines: 3,
                       ),
                     ],
                   ),
-                ),
+                  SizedBox(height: 4),
+                  Text(
+                    '1. Procure a imagem no Google Images\n'
+                    '2. Clique com botão direito na imagem\n'
+                    '3. Selecione "Copiar endereço da imagem"\n'
+                    '4. Cole aqui no campo acima',
+                    style: TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
+            ),
 
-              // Dica sobre biblioteca
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.library_books, color: Colors.blue[600]),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '💡 Biblioteca automática',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[800],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Este exercício será salvo na sua biblioteca e poderá ser reutilizado em outros treinos.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 16),
+
+            // Campo Descrição
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Descrição',
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
+              maxLines: 2,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Campo Instruções
+            TextFormField(
+              controller: _instructionsController,
+              decoration: const InputDecoration(
+                labelText: 'Instruções',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 4,
+            ),
+          ],
         ),
       ),
     );

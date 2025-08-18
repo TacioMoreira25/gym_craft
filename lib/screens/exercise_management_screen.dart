@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/exercise.dart';
 import '../database/database_helper.dart';
 import '../widgets/edit_exercise_dialog.dart';
+import '../widgets/exercise_image_widget.dart';
 
 class ExerciseManagementScreen extends StatefulWidget {
   const ExerciseManagementScreen({Key? key}) : super(key: key);
@@ -277,12 +278,10 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.indigo[100],
-                                child: Icon(
-                                  _getCategoryIcon(exercise.category),
-                                  color: Colors.indigo[700],
-                                ),
+                              leading: ExerciseImageWidget(
+                                imageUrl: exercise.imageUrl,
+                                width: 50,
+                                height: 50,
                               ),
                               title: Text(
                                 exercise.name,

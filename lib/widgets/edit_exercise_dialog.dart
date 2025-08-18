@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/exercise.dart';
 import '../database/database_helper.dart';
+import '../widgets/exercise_image_widget.dart';
 
 class EditExerciseDialog extends StatefulWidget {
   final Exercise? exercise; // null para criar novo
@@ -21,6 +22,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
+  late TextEditingController _imageUrlController; // Novo controller
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool _isLoading = false;
   String _selectedCategory = 'Peito';
@@ -29,10 +31,12 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     'Peito',
     'Costas', 
     'Ombros',
-    'Braços',
-    'Pernas',
+    'Bíceps',
+    'Tríceps',
+    'Quadríceps',
+    'Posterior',
+    'Panturrilhas',
     'Abdomen',
-    'Cardio',
     'Outros',
   ];
 
@@ -44,6 +48,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     _nameController = TextEditingController(text: widget.exercise?.name ?? '');
     _descriptionController = TextEditingController(text: widget.exercise?.description ?? '');
     _instructionsController = TextEditingController(text: widget.exercise?.instructions ?? '');
+    _imageUrlController = TextEditingController(text: widget.exercise?.imageUrl ?? ''); // Novo
     
     if (widget.exercise != null) {
       _selectedCategory = widget.exercise!.category;
@@ -55,7 +60,14 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
+    _imageUrlController.dispose(); // Novo
     super.dispose();
+  }
+
+  bool _isValidUrl(String url) {
+    if (url.isEmpty) return true; // URL vazia é válida (opcional)
+    return Uri.tryParse(url) != null && 
+           (url.startsWith('http://') || url.startsWith('https://'));
   }
 
   Future<void> _saveExercise() async {
@@ -74,6 +86,9 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
         instructions: _instructionsController.text.trim().isEmpty 
             ? null 
             : _instructionsController.text.trim(),
+        imageUrl: _imageUrlController.text.trim().isEmpty  // Novo campo
+            ? null 
+            : _imageUrlController.text.trim(),
         isCustom: true, // Exercícios criados pelo usuário são sempre personalizados
         createdAt: widget.exercise?.createdAt ?? DateTime.now(),
       );
@@ -131,6 +146,20 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Preview da imagem
+                if (_imageUrlController.text.isNotEmpty) ...[
+                  Center(
+                    child: ExerciseImageWidget(
+                      imageUrl: _imageUrlController.text,
+                      width: 100,
+                      height: 100,
+                      category: _selectedCategory,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // Campo Nome
                 TextFormField(
                   controller: _nameController,
@@ -178,6 +207,44 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // Campo URL da Imagem - NOVO
+                TextFormField(
+                  controller: _imageUrlController,
+                  decoration: const InputDecoration(
+                    labelText: 'URL da Imagem (opcional)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.image),
+                    hintText: 'https://exemplo.com/imagem.jpg',
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty && !_isValidUrl(value)) {
+                      return 'Por favor, informe uma URL válida';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    setState(() {}); // Atualizar preview
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // Dica sobre imagem - NOVO
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: const Text(
+                    '💡 Dica: Clique direito na imagem → "Copiar endereço da imagem"',
+                    style: TextStyle(fontSize: 11, color: Colors.blue),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 
                 // Campo Descrição (opcional)
                 TextFormField(
@@ -201,11 +268,11 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                     prefixIcon: Icon(Icons.list),
                     hintText: 'Como executar o exercício',
                   ),
-                  maxLines: 4,
+                  maxLines: 3,
                 ),
                 
                 // Informação sobre exercício personalizado
-                if (_isEditing && !widget.exercise!.isCustom) ...[
+                if (_isEditing && widget.exercise != null && !widget.exercise!.isCustom) ...[
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
@@ -282,14 +349,15 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
         return Icons.back_hand;
       case 'ombros':
         return Icons.keyboard_arrow_up;
-      case 'braços':
+      case 'bíceps':
+      case 'tríceps':
         return Icons.sports_martial_arts;
-      case 'pernas':
+      case 'quadríceps':
+      case 'posterior':
+      case 'panturrilhas':
         return Icons.directions_run;
       case 'abdomen':
         return Icons.center_focus_strong;
-      case 'cardio':
-        return Icons.favorite;
       default:
         return Icons.sports_gymnastics;
     }

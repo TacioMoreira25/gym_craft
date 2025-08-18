@@ -1,8 +1,9 @@
-// screens/select_exercise_screen.dart
 import 'package:flutter/material.dart';
 import 'exercise_management_screen.dart';
 import '../models/exercise.dart';
 import '../database/database_helper.dart';
+import '../widgets/exercise_image_widget.dart';
+
 class SelectExerciseScreen extends StatefulWidget {
   final List<int> excludeExerciseIds;
 
@@ -107,13 +108,20 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
         Expanded(
           child: filteredExercises.isEmpty
               ? _buildEmptyState()
+
               : ListView.builder(
                   itemCount: filteredExercises.length,
                   itemBuilder: (context, index) {
                     final exercise = filteredExercises[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile(
+                      child: ListTile
+                      (
+                        leading: ExerciseImageWidget(
+                        imageUrl: exercise.imageUrl,
+                        width: 50,
+                        height: 50,
+                        ),
                         title: Text(
                           exercise.name,
                           style: const TextStyle(fontWeight: FontWeight.bold),
