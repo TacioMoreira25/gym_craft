@@ -6,6 +6,7 @@ class Exercise {
   String? instructions;
   bool isCustom; 
   DateTime createdAt;
+  String? imageUrl;
 
   Exercise({
     this.id,
@@ -14,6 +15,7 @@ class Exercise {
     required this.category,
     this.instructions,
     this.isCustom = false,
+    this.imageUrl,
     required this.createdAt,
   });
 
@@ -25,6 +27,7 @@ class Exercise {
       'category': category,
       'instructions': instructions,
       'is_custom': isCustom ? 1 : 0,
+      'image_url': imageUrl,
       'created_at': createdAt.millisecondsSinceEpoch,
     };
   }
@@ -37,6 +40,7 @@ class Exercise {
       category: map['category'],
       instructions: map['instructions'],
       isCustom: map['is_custom'] == 1,
+      imageUrl: map['image_url'], 
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
     );
   }

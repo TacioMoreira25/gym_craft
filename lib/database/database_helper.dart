@@ -13,6 +13,7 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
+  static const int _databaseVersion = 3;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -25,12 +26,12 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 2, 
+      version: _databaseVersion, 
       onCreate: _createTables,
       onUpgrade: _upgradeDatabase,
       onDowngrade: (db, oldVersion, newVersion) async {
         await _resetAllTables(db);
-        await _createTables(db, 2);
+        await _createTables(db, newVersion);
       },
     );
   }
@@ -65,7 +66,8 @@ class DatabaseHelper {
         category TEXT NOT NULL,
         instructions TEXT,
         created_at INTEGER NOT NULL,
-        is_custom INTEGER NOT NULL DEFAULT 1
+        is_custom INTEGER NOT NULL DEFAULT 1,
+        image_url TEXT
       )
     ''');
 
@@ -132,6 +134,7 @@ class DatabaseHelper {
         final tableInfo = await db.rawQuery('PRAGMA table_info(exercises)');
         bool hasMuscleGroup = tableInfo.any((col) => col['name'] == 'muscle_group');
         bool hasCategory = tableInfo.any((col) => col['name'] == 'category');
+        bool hasImageUrl = tableInfo.any((col) => col['name'] == 'image_url');
         
         await db.execute('CREATE TABLE exercises_backup AS SELECT * FROM exercises');
         await db.execute('DROP TABLE exercises');
@@ -144,7 +147,8 @@ class DatabaseHelper {
             category TEXT NOT NULL,
             instructions TEXT,
             created_at INTEGER NOT NULL,
-            is_custom INTEGER NOT NULL DEFAULT 1
+            is_custom INTEGER NOT NULL DEFAULT 1,
+            image_url TEXT
           )
         ''');
         
@@ -157,14 +161,17 @@ class DatabaseHelper {
           categoryColumn = "'Outros'";
         }
         
+        String imageUrlColumn = hasImageUrl ? 'image_url' : 'NULL';
+        
         await db.execute('''
-          INSERT INTO exercises (id, name, description, category, instructions, created_at, is_custom)
+          INSERT INTO exercises (id, name, description, category, instructions, created_at, is_custom, image_url)
           SELECT id, name, 
                  COALESCE(description, '') as description,
                  COALESCE($categoryColumn, 'Outros') as category,
                  instructions,
                  COALESCE(created_at, ${DateTime.now().millisecondsSinceEpoch}) as created_at,
-                 COALESCE(is_custom, 1) as is_custom
+                 COALESCE(is_custom, 1) as is_custom,
+                 $imageUrlColumn as image_url
           FROM exercises_backup
         ''');
         
@@ -236,45 +243,59 @@ class DatabaseHelper {
         await _insertDefaultExercises(db);
       }
     }
+
+    if (oldVersion < 3) {
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(exercises)');
+        bool hasImageUrl = tableInfo.any((col) => col['name'] == 'image_url');
+        
+        if (!hasImageUrl) {
+          await db.execute('ALTER TABLE exercises ADD COLUMN image_url TEXT');
+          print('Coluna image_url adicionada com sucesso');
+        }
+      } catch (e) {
+        print('Erro ao adicionar coluna image_url: $e');
+      }
+    }
   }
 
   Future<void> _insertDefaultExercises(Database db) async {
     List<Exercise> defaultExercises = [
       // Peito
-      Exercise(name: 'Supino Reto', description: 'Exercício básico para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Supino Inclinado', description: 'Exercício para parte superior do peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Flexão de Braço', description: 'Exercício corporal para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Crucifixo', description: 'Exercício de isolamento para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Supino Reto', description: 'Exercício básico para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Supino Inclinado', description: 'Exercício para parte superior do peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Flexão de Braço', description: 'Exercício corporal para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Crucifixo', description: 'Exercício de isolamento para peitoral', category: 'Peito', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
       
       // Costas
-      Exercise(name: 'Remada Curvada', description: 'Exercício para desenvolvimento das costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Pulldown', description: 'Exercício para dorsal', category: 'Costas', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Barra Fixa', description: 'Exercício corporal para costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Remada Baixa', description: 'Exercício para meio das costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Remada Curvada', description: 'Exercício para desenvolvimento das costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Pulldown', description: 'Exercício para dorsal', category: 'Costas', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Barra Fixa', description: 'Exercício corporal para costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Remada Baixa', description: 'Exercício para meio das costas', category: 'Costas', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
       
       // Pernas
-      Exercise(name: 'Agachamento', description: 'Exercício fundamental para quadríceps', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Leg Press', description: 'Exercício para quadríceps e glúteos', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Afundo', description: 'Exercício unilateral para pernas', category: 'Posterior', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Stiff', description: 'Exercício para posterior de coxa', category: 'Posterior', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Panturrilha', description: 'Exercício para panturrilhas', category: 'Panturrilhas', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Agachamento', description: 'Exercício fundamental para quadríceps', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Leg Press', description: 'Exercício para quadríceps e glúteos', category: 'Quadríceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Afundo', description: 'Exercício unilateral para pernas', category: 'Posterior', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Stiff', description: 'Exercício para posterior de coxa', category: 'Posterior', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Panturrilha', description: 'Exercício para panturrilhas', category: 'Panturrilhas', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
       
       // Ombros
-      Exercise(name: 'Desenvolvimento', description: 'Exercício base para ombros', category: 'Ombros', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Elevação Lateral', description: 'Exercício para deltoides medial', category: 'Ombros', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Elevação Frontal', description: 'Exercício para deltoides anterior', category: 'Ombros', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Crucifixo Inverso', description: 'Exercício para deltoides posterior', category: 'Ombros', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Desenvolvimento', description: 'Exercício base para ombros', category: 'Ombros', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Elevação Lateral', description: 'Exercício para deltoides medial', category: 'Ombros', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Elevação Frontal', description: 'Exercício para deltoides anterior', category: 'Ombros', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Crucifixo Inverso', description: 'Exercício para deltoides posterior', category: 'Ombros', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
       
       // Braços
-      Exercise(name: 'Rosca Bíceps', description: 'Exercício para bíceps', category: 'Bíceps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Rosca Martelo', description: 'Exercício para bíceps e antebraço', category: 'Bíceps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Tríceps Testa', description: 'Exercício para tríceps', category: 'Tríceps', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Tríceps Pulley', description: 'Exercício para tríceps no cabo', category: 'Tríceps', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Rosca Bíceps', description: 'Exercício para bíceps', category: 'Bíceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Rosca Martelo', description: 'Exercício para bíceps e antebraço', category: 'Bíceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Tríceps Testa', description: 'Exercício para tríceps', category: 'Tríceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Tríceps Pulley', description: 'Exercício para tríceps no cabo', category: 'Tríceps', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
       
       // Abdomen
-      Exercise(name: 'Abdominal Tradicional', description: 'Exercício básico para abdomen', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Prancha', description: 'Exercício isométrico para core', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false),
-      Exercise(name: 'Abdominal Oblíquo', description: 'Exercício para músculos oblíquos', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false),
+      Exercise(name: 'Abdominal Tradicional', description: 'Exercício básico para abdomen', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Prancha', description: 'Exercício isométrico para core', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
+      Exercise(name: 'Abdominal Oblíquo', description: 'Exercício para músculos oblíquos', category: 'Abdomen', createdAt: DateTime.now(), isCustom: false, imageUrl: null),
     ];
 
     for (Exercise exercise in defaultExercises) {
@@ -487,7 +508,8 @@ class DatabaseHelper {
         e.category as exercise_category,
         e.instructions as exercise_instructions,
         e.is_custom as exercise_is_custom,
-        e.created_at as exercise_created_at
+        e.created_at as exercise_created_at,
+        e.image_url as exercise_image_url
       FROM workout_exercises we
       JOIN exercises e ON we.exercise_id = e.id
       WHERE we.workout_id = ?
@@ -509,6 +531,7 @@ class DatabaseHelper {
         instructions: map['exercise_instructions'],
         isCustom: map['exercise_is_custom'] == 1,
         createdAt: DateTime.fromMillisecondsSinceEpoch(map['exercise_created_at']),
+        imageUrl: map['exercise_image_url'],
       );
       
       // Buscar as séries
@@ -523,7 +546,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getWorkoutExercises(int workoutId) async {
     final db = await database;
     return await db.rawQuery('''
-      SELECT we.*, e.name as exercise_name, e.category, e.description, e.instructions
+      SELECT we.*, e.name as exercise_name, e.category, e.description, e.instructions, e.image_url
       FROM workout_exercises we
       JOIN exercises e ON we.exercise_id = e.id
       WHERE we.workout_id = ?
@@ -661,7 +684,7 @@ class DatabaseHelper {
     }
   }
 
-  Future<int> getOrCreateExercise(String name, String description, String category, {String? instructions}) async {
+  Future<int> getOrCreateExercise(String name, String description, String category, {String? instructions, String? imageUrl}) async {
     // Primeiro tenta encontrar exercício existente
     Exercise? existing = await getExerciseByName(name);
     
@@ -677,6 +700,7 @@ class DatabaseHelper {
       instructions: instructions,
       createdAt: DateTime.now(),
       isCustom: true,
+      imageUrl: imageUrl,
     );
 
     return await insertExercise(exercise);
@@ -718,7 +742,7 @@ class DatabaseHelper {
   Future<void> resetDatabase() async {
     final db = await database;
     await _resetAllTables(db);
-    await _createTables(db, 2);
+    await _createTables(db, _databaseVersion);
   }
   
   Future<void> _resetAllTables(Database db) async {
@@ -751,5 +775,38 @@ class DatabaseHelper {
       print('Erro ao recriar banco de dados: $e');
       rethrow;
     }
+  }
+
+  // Método para atualizar a URL da imagem de um exercício
+  Future<int> updateExerciseImage(int exerciseId, String? imageUrl) async {
+    final db = await database;
+    return await db.update(
+      'exercises',
+      {'image_url': imageUrl},
+      where: 'id = ?',
+      whereArgs: [exerciseId],
+    );
+  }
+
+  // Método para buscar exercícios que possuem imagem
+  Future<List<Exercise>> getExercisesWithImages() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'exercises',
+      where: 'image_url IS NOT NULL AND image_url != ""',
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
+  }
+
+  // Método para buscar exercícios sem imagem
+  Future<List<Exercise>> getExercisesWithoutImages() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'exercises',
+      where: 'image_url IS NULL OR image_url = ""',
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
 }
