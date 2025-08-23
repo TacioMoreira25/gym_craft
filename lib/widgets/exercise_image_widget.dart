@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'ImageViewerDialog.dart'; 
 
 class ExerciseImageWidget extends StatelessWidget {
   final String? imageUrl;
@@ -7,6 +8,8 @@ class ExerciseImageWidget extends StatelessWidget {
   final double height;
   final String? category;
   final BorderRadius? borderRadius;
+  final bool enableTap; // Novo parâmetro
+  final String? exerciseName; // Novo parâmetro
 
   const ExerciseImageWidget({
     super.key,
@@ -15,6 +18,8 @@ class ExerciseImageWidget extends StatelessWidget {
     this.height = 60,
     this.category,
     this.borderRadius,
+    this.enableTap = true, // Padrão é habilitado
+    this.exerciseName, // Nome do exercício para o dialog
   });
 
   IconData _getCategoryIcon(String? category) {
@@ -98,8 +103,7 @@ class ExerciseImageWidget extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildImageWidget() {
     // Se não há URL de imagem, mostrar fallback
     if (imageUrl == null || imageUrl!.isEmpty) {
       return _buildFallbackWidget();
@@ -118,5 +122,47 @@ class ExerciseImageWidget extends StatelessWidget {
         fadeOutDuration: const Duration(milliseconds: 300),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget imageWidget = _buildImageWidget();
+
+    // Se enableTap for true e tiver imageUrl válida, envolver com GestureDetector
+    if (enableTap && imageUrl != null && imageUrl!.isNotEmpty) {
+      return GestureDetector(
+        onTap: () {
+          ImageViewerDialog.show(
+            context: context,
+            imageUrl: imageUrl,
+            exerciseName: exerciseName ?? 'Exercício',
+          );
+        },
+        child: Stack(
+          children: [
+            imageWidget,
+            // Overlay sutil para indicar que é clicável
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Icon(
+                  Icons.zoom_in,
+                  size: width * 0.15, // Proporcional ao tamanho da imagem
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return imageWidget;
   }
 }

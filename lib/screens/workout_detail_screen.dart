@@ -10,7 +10,7 @@ import '../widgets/add_workout_exercise_dialog.dart';
 import '../utils/constants.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
-
+import '../widgets/ImageViewerDialog.dart'; 
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
@@ -90,6 +90,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       'category': workoutExercise.exercise?.category ?? '',
       'description': workoutExercise.exercise?.description ?? '',
       'instructions': workoutExercise.exercise?.instructions ?? '',
+      'image_url': workoutExercise.exercise?.imageUrl, // ADICIONE ESTA LINHA
     };
 
     if (!mounted) return;
@@ -304,127 +305,149 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final muscleGroupColor = AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
     
     return Card(
- margin: const EdgeInsets.only(bottom: 12),
-  elevation: 2,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
-  ),
-  child: Padding(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header do exercício
-        Row(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagem do exercício
-            ExerciseImageWidget(
-              imageUrl: exercise?.imageUrl,
-              width: 60,
-              height: 60,
-              category: exercise?.category,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            const SizedBox(width: 12),
-            
-            // Número do exercício (círculo menor)
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: muscleGroupColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: muscleGroupColor.withOpacity(0.5),
-                  width: 1.5,
+            // Header do exercício
+            Row(
+              children: [
+                // Imagem do exercício (ATUALIZADA COM FUNCIONALIDADE DE CLIQUE)
+                ExerciseImageWidget(
+                  imageUrl: exercise?.imageUrl,
+                  width: 60,
+                  height: 60,
+                  category: exercise?.category,
+                  borderRadius: BorderRadius.circular(8),
+                  enableTap: true, // Habilita o clique
+                  exerciseName: exercise?.name ?? 'Exercício', // Nome do exercício
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    color: muscleGroupColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            
-            // Nome e grupo muscular
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exercise?.name ?? 'Exercício',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                
+                // Número do exercício (círculo menor)
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: muscleGroupColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: muscleGroupColor.withOpacity(0.5),
+                      width: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.fitness_center,
-                        size: 14,
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
                         color: muscleGroupColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
-                      const SizedBox(width: 4),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // Nome e grupo muscular
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        exercise?.category ?? '',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: muscleGroupColor,
-                          fontWeight: FontWeight.w500,
+                        exercise?.name ?? 'Exercício',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Menu de opções
-            PopupMenuButton(
-              icon: const Icon(Icons.more_vert),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 20),
-                      SizedBox(width: 8),
-                      Text('Editar'),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.fitness_center,
+                            size: 14,
+                            color: muscleGroupColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            exercise?.category ?? '',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: muscleGroupColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      // ADICIONE ESTA DICA VISUAL ABAIXO DA CATEGORIA
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.touch_app,
+                            size: 10,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Toque na imagem para ampliar',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[400],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 20, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Remover', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
+                
+                // Menu de opções
+                PopupMenuButton(
+                  icon: const Icon(Icons.more_vert),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Remover', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'edit':
+                        _editWorkoutExercise(workoutExercise);
+                        break;
+                      case 'delete':
+                        _deleteExercise(workoutExercise);
+                        break;
+                    }
+                  },
                 ),
               ],
-              onSelected: (value) {
-                switch (value) {
-                  case 'edit':
-                    _editWorkoutExercise(workoutExercise);
-                    break;
-                  case 'delete':
-                    _deleteExercise(workoutExercise);
-                    break;
-                }
-              },
             ),
-          ],
-        ),
 
             // Detalhes das séries
             if (series.isNotEmpty) ...[

@@ -1,4 +1,3 @@
-import 'workout.dart';
 import 'exercise.dart';
 import 'workout_series.dart';
 import 'series_type.dart';
