@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gym_craft/models/exercise.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_series.dart';
 import '../models/series_type.dart';
 import '../database/database_helper.dart';
 import '../utils/constants.dart';
-import '../widgets/exercise_image_widget.dart'; 
+import '../widgets/exercise_image_widget.dart';
+import '../widgets/ImageViewerDialog.dart'; 
 
 class EditWorkoutExerciseDialog extends StatefulWidget {
   final Map<String, dynamic> workoutExerciseData;
@@ -186,7 +188,6 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header atualizado com imagem e categoria
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -201,13 +202,13 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                 children: [
                   Row(
                     children: [
-                      // Imagem do exercício
+                      // Imagem do exercício usando ExerciseImageWidget
                       ExerciseImageWidget(
-                        imageUrl: widget.workoutExerciseData['exercise_image_url'],
-                        width: 50,
-                        height: 50,
-                        category: widget.workoutExerciseData['exercise_category'],
+                        imageUrl: widget.workoutExerciseData['image_url'] as String?,
+                        category: widget.workoutExerciseData['category'] as String?,
                         borderRadius: BorderRadius.circular(8),
+                        enableTap: true, 
+                        exerciseName: widget.workoutExerciseData['exercise_name'] as String?, 
                       ),
                       const SizedBox(width: 12),
                       
@@ -248,7 +249,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  widget.workoutExerciseData['exercise_category'] ?? '',
+                                  widget.workoutExerciseData['category'] ?? '',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.grey[500],

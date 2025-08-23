@@ -4,7 +4,7 @@ import '../database/database_helper.dart';
 import '../widgets/exercise_image_widget.dart';
 
 class EditExerciseDialog extends StatefulWidget {
-  final Exercise? exercise; // null para criar novo
+  final Exercise? exercise;
   final VoidCallback onUpdated;
 
   const EditExerciseDialog({
@@ -22,7 +22,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
-  late TextEditingController _imageUrlController; // Novo controller
+  late TextEditingController _imageUrlController; 
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool _isLoading = false;
   String _selectedCategory = 'Peito';
@@ -48,7 +48,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     _nameController = TextEditingController(text: widget.exercise?.name ?? '');
     _descriptionController = TextEditingController(text: widget.exercise?.description ?? '');
     _instructionsController = TextEditingController(text: widget.exercise?.instructions ?? '');
-    _imageUrlController = TextEditingController(text: widget.exercise?.imageUrl ?? ''); // Novo
+    _imageUrlController = TextEditingController(text: widget.exercise?.imageUrl ?? ''); 
     
     if (widget.exercise != null) {
       _selectedCategory = widget.exercise!.category;
@@ -60,12 +60,11 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
-    _imageUrlController.dispose(); // Novo
-    super.dispose();
+    _imageUrlController.dispose(); 
   }
 
   bool _isValidUrl(String url) {
-    if (url.isEmpty) return true; // URL vazia é válida (opcional)
+    if (url.isEmpty) return true; 
     return Uri.tryParse(url) != null && 
            (url.startsWith('http://') || url.startsWith('https://'));
   }
