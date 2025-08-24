@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../models/routine.dart';
 
 class CreateRoutineScreen extends StatefulWidget {
@@ -10,7 +10,7 @@ class CreateRoutineScreen extends StatefulWidget {
 }
 
 class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -208,7 +208,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
         createdAt: DateTime.now(),
       );
 
-      await _databaseHelper.insertRoutine(routine);
+      await _databaseService.routines.insertRoutine(routine);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

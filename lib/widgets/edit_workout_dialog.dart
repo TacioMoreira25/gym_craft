@@ -1,7 +1,6 @@
-// lib/widgets/edit_workout_dialog.dart
 import 'package:flutter/material.dart';
 import '../models/workout.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 
 class EditWorkoutDialog extends StatefulWidget {
   final Workout workout;
@@ -21,7 +20,7 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
 
   @override
@@ -54,7 +53,7 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
         createdAt: widget.workout.createdAt,
       );
 
-      await _dbHelper.updateWorkout(updatedWorkout);
+      await _databaseService.workouts.updateWorkout(updatedWorkout);
       
       if (mounted) {
         Navigator.of(context).pop();

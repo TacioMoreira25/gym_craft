@@ -4,7 +4,7 @@ import '../models/exercise.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_series.dart';
 import '../models/series_type.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 
 class AddWorkoutExerciseDialog extends StatefulWidget {
   final int workoutId;
@@ -25,7 +25,7 @@ class AddWorkoutExerciseDialog extends StatefulWidget {
 class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   
   bool _isLoading = false;
   List<SeriesData> _seriesList = [
@@ -67,7 +67,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
 
     try {
       // Pega o próximo order_index
-      final nextOrder = await _dbHelper.getNextWorkoutExerciseOrder(widget.workoutId);
+      final nextOrder = await _databaseService.workoutExercises.getNextWorkoutExerciseOrder(widget.workoutId);
       
       // Criar o WorkoutExercise
       final workoutExercise = WorkoutExercise(
@@ -79,7 +79,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
       );
 
       // Salva o WorkoutExercise e obtém o ID
-      final workoutExerciseId = await _dbHelper.insertWorkoutExercise(workoutExercise);
+      final workoutExerciseId = await _databaseService.workoutExercises.insertWorkoutExercise(workoutExercise);
 
       // Cria as séries vinculadas a esse WorkoutExercise
       List<WorkoutSeries> seriesList = [];
@@ -99,7 +99,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
       }
 
       // Salva todas as séries no banco
-      await _dbHelper.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
+      await _databaseService.series.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
       
       if (mounted) {
         Navigator.of(context).pop(true);

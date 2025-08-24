@@ -4,10 +4,10 @@ import 'package:gym_craft/models/exercise.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_series.dart';
 import '../models/series_type.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../utils/constants.dart';
 import '../widgets/exercise_image_widget.dart';
-import '../widgets/ImageViewerDialog.dart'; 
+import '../widgets/ImageViewerDialog.dart';
 
 class EditWorkoutExerciseDialog extends StatefulWidget {
   final Map<String, dynamic> workoutExerciseData;
@@ -26,7 +26,7 @@ class EditWorkoutExerciseDialog extends StatefulWidget {
 class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _notesController;
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
   List<WorkoutSeries> _series = [];
 
@@ -49,14 +49,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
     
     try {
       final workoutExerciseId = widget.workoutExerciseData['id'];
-      final seriesList = await _dbHelper.getSeriesByWorkoutExercise(workoutExerciseId);
+      final seriesList = await _databaseService.series.getSeriesByWorkoutExercise(workoutExerciseId);
       
       if (mounted) {
         setState(() {
           _series = List.from(seriesList);
           if (_series.isEmpty) {
             _series.add(WorkoutSeries(
-              id: 0,
+              id: null, // MUDANÇA: usar null ao invés de 0
               workoutExerciseId: workoutExerciseId,
               seriesNumber: 1,
               type: SeriesType.valid,
@@ -92,7 +92,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         createdAt: DateTime.fromMillisecondsSinceEpoch(data['created_at']),
       );
 
-      await _dbHelper.updateWorkoutExercise(workoutExercise);
+      await _databaseService.workoutExercises.updateWorkoutExercise(workoutExercise);
       
       // Atualizar as séries
       await _updateSeries();
@@ -118,15 +118,22 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
     final workoutExerciseId = widget.workoutExerciseData['id'];
     
     // Primeiro, excluir todas as séries existentes
-    await _dbHelper.deleteSeriesByWorkoutExercise(workoutExerciseId);
+    await _databaseService.series.deleteSeriesByWorkoutExercise(workoutExerciseId);
     
-    // Depois, inserir as novas séries
+    // Depois, inserir as novas séries (sem ID - deixar o banco gerar)
     for (int i = 0; i < _series.length; i++) {
-      final series = _series[i].copyWith(
+      final series = WorkoutSeries(
+        id: null, // MUDANÇA: sempre null para novas inserções
         workoutExerciseId: workoutExerciseId,
         seriesNumber: i + 1,
+        type: _series[i].type,
+        repetitions: _series[i].repetitions,
+        weight: _series[i].weight,
+        restSeconds: _series[i].restSeconds,
+        notes: _series[i].notes,
       );
-      await _dbHelper.insertSeries(series);
+      
+      await _databaseService.series.insertSeries(series);
     }
   }
 
@@ -136,13 +143,13 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
     setState(() {
       _series.add(
         WorkoutSeries(
-          id: 0,
+          id: null, // MUDANÇA: usar null ao invés de 0
           workoutExerciseId: widget.workoutExerciseData['id'],
           seriesNumber: _series.length + 1,
           type: type,
           repetitions: type == SeriesType.valid ? 12 : null,
-          weight: 0.0,
-          restSeconds: type == SeriesType.rest ? 0 : 60,
+          weight: type == SeriesType.rest ? null : 0.0, // MUDANÇA: null para tipo rest
+          restSeconds: type == SeriesType.rest ? 30 : 60, // MUDANÇA: valor padrão melhor
           notes: "",
         ),
       );
@@ -164,9 +171,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
     setState(() {
       _series.removeAt(index);
-      for (int i = 0; i < _series.length; i++) {
-        _series[i] = _series[i].copyWith(seriesNumber: i + 1);
-      }
+      // Não é necessário renumerar aqui, será feito no _updateSeries()
     });
   }
 
@@ -207,8 +212,8 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         imageUrl: widget.workoutExerciseData['image_url'] as String?,
                         category: widget.workoutExerciseData['category'] as String?,
                         borderRadius: BorderRadius.circular(8),
-                        enableTap: true, 
-                        exerciseName: widget.workoutExerciseData['exercise_name'] as String?, 
+                        enableTap: true,
+                        exerciseName: widget.workoutExerciseData['exercise_name'] as String?,
                       ),
                       const SizedBox(width: 12),
                       
@@ -254,6 +259,26 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                                     fontSize: 13,
                                     color: Colors.grey[500],
                                     fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // ADICIONE DICA VISUAL AQUI
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.touch_app,
+                                  size: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Toque na imagem para ampliar',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[400],
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
@@ -333,7 +358,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         final index = entry.key;
                         final series = entry.value;
                         return _SeriesCard(
-                          key: ValueKey('series_${series.id}_$index'),
+                          key: ValueKey('series_temp_$index'), // MUDANÇA: usar índice temporário
                           series: series,
                           seriesNumber: index + 1,
                           onChanged: (updatedSeries) => _updateSeriesAtIndex(index, updatedSeries),
@@ -527,6 +552,27 @@ class _SeriesCardState extends State<_SeriesCard> {
                     if (mounted) {
                       setState(() {
                         _selectedType = newType;
+                        
+                        // MUDANÇA: Ajustar campos baseado no tipo
+                        if (newType == SeriesType.rest) {
+                          _repsController.clear();
+                          _weightController.clear();
+                          if (_restController.text.isEmpty) {
+                            _restController.text = '30';
+                          }
+                        } else if (newType == SeriesType.warmup || newType == SeriesType.recognition) {
+                          _weightController.clear();
+                          if (_repsController.text.isEmpty) {
+                            _repsController.text = '12';
+                          }
+                        } else {
+                          if (_repsController.text.isEmpty) {
+                            _repsController.text = '12';
+                          }
+                          if (_restController.text.isEmpty) {
+                            _restController.text = '60';
+                          }
+                        }
                       });
                       _updateSeries();
                     }

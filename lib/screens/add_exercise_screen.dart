@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/exercise.dart';
-import '../database/database_helper.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../services/database_service.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   final Exercise? exercise;
@@ -86,12 +86,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       );
 
       if (widget.exercise == null) {
-        await DatabaseHelper().insertExercise(exercise);
+        await DatabaseService().exercises.insertExercise(exercise);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Exercício adicionado com sucesso!')),
         );
       } else {
-        await DatabaseHelper().updateExercise(exercise);
+        await DatabaseService().exercises.updateExercise(exercise);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Exercício atualizado com sucesso!')),
         );
