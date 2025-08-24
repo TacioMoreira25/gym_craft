@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/exercise.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../widgets/edit_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
 
@@ -12,7 +12,7 @@ class ExerciseManagementScreen extends StatefulWidget {
 }
 
 class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   List<Exercise> _exercises = [];
   List<Exercise> _filteredExercises = [];
   String _selectedCategory = 'Todos';
@@ -49,7 +49,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
   Future<void> _loadExercises() async {
     setState(() => _isLoading = true);
     try {
-      final exercises = await _dbHelper.getAllExercises();
+      final exercises = await _databaseService.exercises.getAllExercises();
       setState(() {
         _exercises = exercises;
         _filterExercises();
@@ -102,7 +102,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
 
   Future<void> _deleteExercise(Exercise exercise) async {
     // Verificar se pode deletar
-    final canDelete = await _dbHelper.canDeleteExercise(exercise.id!);
+    final canDelete = await _databaseService.exercises.canDeleteExercise(exercise.id!);
     
     if (!canDelete) {
       if (mounted) {
@@ -138,7 +138,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
 
     if (confirmed == true) {
       try {
-        await _dbHelper.deleteExercise(exercise.id!);
+        await _databaseService.exercises.deleteExercise(exercise.id!);
         _loadExercises();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

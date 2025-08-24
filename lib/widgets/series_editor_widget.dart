@@ -436,7 +436,7 @@ class _SeriesCardState extends State<_SeriesCard> {
       case SeriesType.dropset:
       case SeriesType.failure:
       case SeriesType.negativa:
-        return true; // Todos os campos
+        return true; 
 
       case SeriesType.warmup:
       case SeriesType.recognition:

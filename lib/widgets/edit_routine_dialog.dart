@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 
 class EditRoutineDialog extends StatefulWidget {
   final Routine routine;
@@ -21,7 +21,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
   late bool _isActive;
 
@@ -54,7 +54,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
         isActive: _isActive,
       );
 
-      await _dbHelper.updateRoutine(updatedRoutine);
+      await _databaseService.routines.updateRoutine(updatedRoutine);
       
       if (mounted) {
         Navigator.of(context).pop();

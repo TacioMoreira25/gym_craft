@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
+import '../data/database_helper.dart';
 import '../models/exercise.dart';
 import '../utils/constants.dart';
 import 'package:sqflite/sqflite.dart';
@@ -13,7 +14,7 @@ class ExercisesLibraryScreen extends StatefulWidget {
 }
 
 class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   List<Exercise> _allExercises = [];
   List<Exercise> _filteredExercises = [];
   String _selectedCategory = 'Todos';
@@ -32,7 +33,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   Future<void> _loadExercises() async {
     setState(() => _isLoading = true);
 
-    final exercises = await _databaseHelper.getAllExercises();
+    final exercises = await _databaseService.exercises.getAllExercises();
 
     setState(() {
       _allExercises = exercises;
@@ -124,7 +125,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await _databaseHelper.deleteExercise(exercise.id!);
+                await _databaseService.exercises.deleteExercise(exercise.id!);
                 if (mounted) {
                   Navigator.of(context).pop();
                   _loadExercises();
@@ -612,7 +613,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   }
 
   Future<int> _getExerciseUsageCount(int exerciseId) async {
-    final db = await _databaseHelper.database;
+    final db = await DatabaseHelper().database;
     final result = await db.rawQuery(
       '''
       SELECT COUNT(DISTINCT workout_id) as count 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'exercise_management_screen.dart';
 import '../models/exercise.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
 
 class SelectExerciseScreen extends StatefulWidget {
@@ -18,7 +18,7 @@ class SelectExerciseScreen extends StatefulWidget {
 
 class _SelectExerciseScreenState extends State<SelectExerciseScreen> 
 {
-  final _databaseHelper =DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
 
   List<Exercise> allExercises = [];
   List<Exercise> filteredExercises = [];
@@ -209,7 +209,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
 
   Future<void> _loadExercises() async {
     try {
-      final exercises = await _databaseHelper.getAllExercises();
+      final exercises = await _databaseService.exercises.getAllExercises();
       final availableExercises = exercises
           .where((e) => !widget.excludeExerciseIds.contains(e.id))
           .toList();

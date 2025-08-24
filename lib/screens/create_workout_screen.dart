@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
 import '../utils/constants.dart';
@@ -14,7 +14,7 @@ class CreateWorkoutScreen extends StatefulWidget {
 }
 
 class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -211,7 +211,7 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
         createdAt: DateTime.now(),
       );
 
-      await _databaseHelper.insertWorkout(workout);
+      await _databaseService.workouts.insertWorkout(workout);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

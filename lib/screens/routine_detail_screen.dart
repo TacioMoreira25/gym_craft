@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
 import '../utils/constants.dart';
@@ -17,7 +17,7 @@ class RoutineDetailScreen extends StatefulWidget {
 }
 
 class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   List<Workout> _workouts = [];
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
@@ -31,10 +31,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
-    final workouts = await _databaseHelper.getWorkoutsByRoutine(
+    final workouts = await _databaseService.workouts.getWorkoutsByRoutine(
       widget.routine.id!,
     );
-    final stats = await _databaseHelper.getRoutineStats(widget.routine.id!);
+    final stats = await _databaseService.routines.getRoutineStats(widget.routine.id!);
 
     setState(() {
       _workouts = workouts;
@@ -447,7 +447,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseHelper.deleteWorkout(workout.id!);
+                await _databaseService.workouts.deleteWorkout(workout.id!);
                 _loadData();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

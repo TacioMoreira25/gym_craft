@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../models/routine.dart';
 import 'create_routine_screen.dart';
 import 'routine_detail_screen.dart';
@@ -13,7 +13,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   List<Routine> _routines = [];
   bool _isLoading = true;
 
@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadRoutines() async {
     setState(() => _isLoading = true);
-    final routines = await _databaseHelper.getAllRoutines();
+    final routines = await _databaseService.routines.getAllRoutines();
     setState(() {
       _routines = routines;
       _isLoading = false;
@@ -313,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseHelper.deleteRoutine(routine.id!);
+                await _databaseService.routines.deleteRoutine(routine.id!);
                 _loadRoutines();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

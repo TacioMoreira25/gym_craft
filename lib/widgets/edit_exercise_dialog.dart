@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/exercise.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
 
 class EditExerciseDialog extends StatefulWidget {
@@ -23,7 +23,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
   late TextEditingController _imageUrlController; 
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
   String _selectedCategory = 'Peito';
 
@@ -93,9 +93,9 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
       );
 
       if (_isEditing) {
-        await _dbHelper.updateExercise(exercise);
+        await _databaseService.exercises.updateExercise(exercise);
       } else {
-        await _dbHelper.insertExercise(exercise);
+        await _databaseService.exercises.insertExercise(exercise);
       }
       
       if (mounted) {

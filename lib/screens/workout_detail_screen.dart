@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../models/workout_exercise.dart';
@@ -22,7 +22,7 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
   List<WorkoutExercise> _workoutExercises = [];
   bool _isLoading = true;
 
@@ -37,7 +37,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     
     setState(() => _isLoading = true);
     try {
-      final exercises = await _databaseHelper.getWorkoutExercisesWithDetails(widget.workout.id!);
+      final exercises = await _databaseService.workoutExercises.getWorkoutExercisesWithDetails(widget.workout.id!);
       if (mounted) {
         setState(() {
           _workoutExercises = exercises;
@@ -131,7 +131,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseHelper.deleteWorkoutExercise(workoutExercise.id!);
+                await _databaseService.workoutExercises.deleteWorkoutExercise(workoutExercise.id!);
                 if (mounted) {
                   _loadWorkoutExercises();
                   ScaffoldMessenger.of(context).showSnackBar(
