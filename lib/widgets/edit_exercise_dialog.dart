@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/exercise.dart';
 import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../utils/constants.dart';
+
 
 class EditExerciseDialog extends StatefulWidget {
   final Exercise? exercise;
@@ -27,18 +29,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   bool _isLoading = false;
   String _selectedCategory = 'Peito';
 
-  final List<String> _categories = [
-    'Peito',
-    'Costas', 
-    'Ombros',
-    'Bíceps',
-    'Tríceps',
-    'Quadríceps',
-    'Posterior',
-    'Panturrilhas',
-    'Abdomen',
-    'Outros',
-  ];
+  final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
 
   bool get _isEditing => widget.exercise != null;
 
@@ -88,7 +79,6 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
         imageUrl: _imageUrlController.text.trim().isEmpty  // Novo campo
             ? null 
             : _imageUrlController.text.trim(),
-        isCustom: true, // Exercícios criados pelo usuário são sempre personalizados
         createdAt: widget.exercise?.createdAt ?? DateTime.now(),
       );
 
@@ -281,21 +271,6 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.blue[300]!),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.blue[700], size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Este é um exercício da biblioteca padrão. Suas alterações criarão uma cópia personalizada.',
-                            style: TextStyle(
-                              color: Colors.blue[700],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ],
@@ -341,24 +316,9 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'peito':
-        return Icons.fitness_center;
-      case 'costas':
-        return Icons.back_hand;
-      case 'ombros':
-        return Icons.keyboard_arrow_up;
-      case 'bíceps':
-      case 'tríceps':
-        return Icons.sports_martial_arts;
-      case 'quadríceps':
-      case 'posterior':
-      case 'panturrilhas':
-        return Icons.directions_run;
-      case 'abdomen':
-        return Icons.center_focus_strong;
-      default:
-        return Icons.sports_gymnastics;
+    if (category == 'Todos') {
+      return Icons.list;
     }
+    return AppConstants.getMuscleGroupIcon(category);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gym_craft/utils/constants.dart';
 import '../models/exercise.dart';
 import '../widgets/exercise_image_widget.dart';
 import '../services/database_service.dart';
@@ -22,18 +23,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   String _selectedCategory = 'Peito';
   bool _isLoading = false;
 
-  final List<String> _categories = [
-    'Peito',
-    'Costas',
-    'Quadríceps',
-    'Posterior',
-    'Panturrilhas',
-    'Ombros',
-    'Bíceps',
-    'Tríceps',
-    'Abdomen',
-    'Outros',
-  ];
+  final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
 
   @override
   void initState() {

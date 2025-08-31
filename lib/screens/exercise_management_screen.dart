@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gym_craft/utils/constants.dart';
 import '../models/exercise.dart';
 import '../services/database_service.dart';
 import '../widgets/edit_exercise_dialog.dart';
@@ -19,20 +20,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _categories = [
-    'Peito',
-    'Costas',
-    'Quadricps',
-    'Posterior',
-    'Glúteos',
-    'Panturrilhas',
-    'Ombros',
-    'Bíceps',
-    'Tríceps',
-    'Abdômen',
-    'Cardio',
-    'Antebraços',
-  ];
+  final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
 
   @override
   void initState() {
@@ -171,6 +159,20 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
     );
   }
 
+  IconData _getCategoryIcon(String category) {
+    if (category == 'Todos') {
+      return Icons.list;
+    }
+    return AppConstants.getMuscleGroupIcon(category);
+  }
+
+  Color _getCategoryColor(String category) {
+    if (category == 'Todos') {
+      return Colors.indigo;
+    }
+    return AppConstants.getMuscleGroupColor(category);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,6 +220,13 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: FilterChip(
+                          avatar: Icon(
+                            _getCategoryIcon(category),
+                            size: 18,
+                            color: isSelected 
+                                ? _getCategoryColor(category)
+                                : Colors.grey[600],
+                          ),
                           label: Text(category),
                           selected: isSelected,
                           onSelected: (selected) {
@@ -226,8 +235,13 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                               _filterExercises();
                             });
                           },
-                          selectedColor: Colors.indigo[100],
-                          checkmarkColor: Colors.indigo[700],
+                          selectedColor: _getCategoryColor(category).withOpacity(0.2),
+                          checkmarkColor: _getCategoryColor(category),
+                          labelStyle: TextStyle(
+                            color: isSelected 
+                                ? _getCategoryColor(category)
+                                : Colors.grey[700],
+                          ),
                         ),
                       );
                     },
@@ -305,12 +319,26 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.grey[200],
+                                          color: AppConstants.getMuscleGroupColor(exercise.category).withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
-                                        child: Text(
-                                          exercise.category,
-                                          style: const TextStyle(fontSize: 12),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              AppConstants.getMuscleGroupIcon(exercise.category),
+                                              size: 12,
+                                              color: AppConstants.getMuscleGroupColor(exercise.category),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              exercise.category,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppConstants.getMuscleGroupColor(exercise.category),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       if (exercise.isCustom) ...[
@@ -380,36 +408,5 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
         ],
       ),
     );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'peito':
-        return Icons.fitness_center;
-      case 'costas':
-        return Icons.back_hand;
-      case 'ombros':
-        return Icons.keyboard_arrow_up;
-      case 'Bíceps':
-        return Icons.sports_martial_arts;
-      case 'Tríceps':
-        return Icons.sports_martial_arts;
-      case 'Quadricps':
-        return Icons.directions_run;
-      case 'Posterior':
-        return Icons.directions_run;
-      case 'Glúteos':
-        return Icons.directions_run;
-      case 'Panturrilhas':
-        return Icons.directions_run;
-      case 'abdomen':
-        return Icons.center_focus_strong;
-      case 'cardio':
-        return Icons.favorite;
-      case 'Antebraços':
-        return Icons.sports_martial_arts;
-      default:
-        return Icons.sports_gymnastics;
-    }
   }
 }

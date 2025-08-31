@@ -5,14 +5,14 @@ class AppConstants {
   static const List<String> muscleGroups = [
     'Peito',
     'Costas',
-    'Quadricps',
+    'Quadríceps',
     'Posterior',
     'Glúteos',
     'Panturrilhas',
     'Ombros',
     'Bíceps',
     'Tríceps',
-    'Abdômen',
+    'Abdomen',
     'Cardio',
     'Antebraços',
   ];
@@ -39,20 +39,35 @@ class AppConstants {
     'Sexta',
     'Sabado',
   ];
-
+  
   static Map<String, Color> categoryColors = {
     'Peito': Colors.red,
     'Costas': Colors.blue,
     'Quadricps': Colors.green,
     'Posterior': const Color.fromARGB(255, 0, 41, 1),
     'Glúteos': Colors.pinkAccent,
-    'Ombros': Colors.purple,
+    'Ombros': Colors.brown,
     'Bíceps': Colors.orange,
-    'Tríceps': Colors.tealAccent,
+    'Tríceps': Colors.deepOrange,
     'Abdômen': Colors.teal,
-    'Antebraços': Colors.black54,
-    'Panturrilhas': Colors.pink,
+    'Antebraços': Colors.indigoAccent,
+    'Panturrilhas': Colors.blueGrey,
     'Cardio': Colors.amber,
+  };
+
+  static const Map<String, IconData> muscleGroupIcons = {
+    'Peito': Icons.fitness_center,
+    'Costas': Icons.back_hand,
+    'Quadricps': Icons.accessibility_new,
+    'Posterior': Icons.sports_gymnastics,
+    'Glúteos': Icons.self_improvement,
+    'Ombros': Icons.sports_martial_arts,
+    'Bíceps': Icons.sports_kabaddi,
+    'Tríceps': Icons.gesture,
+    'Abdômen': Icons.fitbit,
+    'Antebraços': Icons.pan_tool,
+    'Panturrilhas': Icons.directions_walk,
+    'Cardio': Icons.favorite,
   };
 
   static const Map<SeriesType, Color> seriesTypeColors = {
@@ -85,6 +100,10 @@ class AppConstants {
     SeriesType.negativa: 'Negativa',
   };
 
+  static IconData getMuscleGroupIcon(String muscleGroup) {
+    return muscleGroupIcons[muscleGroup] ?? Icons.fitness_center;
+  }
+
   static Color getSeriesTypeColor(SeriesType type) {
     return seriesTypeColors[type] ?? Colors.grey;
   }
@@ -95,6 +114,10 @@ class AppConstants {
 
   static String getSeriesTypeName(SeriesType type) {
     return seriesTypeNames[type] ?? 'Desconhecido';
+  }
+
+  static Color getMuscleGroupColor(String muscleGroup) {
+    return categoryColors[muscleGroup] ?? Colors.grey;
   }
 
   static Map<SeriesType, Color> getDarkSeriesTypeColors() {

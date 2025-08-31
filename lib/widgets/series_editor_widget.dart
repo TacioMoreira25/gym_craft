@@ -42,7 +42,7 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
           repetitions: type == SeriesType.valid ? 12 : null,
           weight: 0.0,
           restSeconds: type == SeriesType.rest ? 0 : 60,
-          notes: "",
+          notes: null, 
         ),
       );
     });
@@ -226,6 +226,8 @@ class _SeriesCardState extends State<_SeriesCard> {
   }
 
   void _updateSeries() {
+    final notesText = _notesController.text.trim();
+    
     final updatedSeries = widget.series.copyWith(
       type: _selectedType,
       repetitions: _repsController.text.isEmpty
@@ -237,7 +239,7 @@ class _SeriesCardState extends State<_SeriesCard> {
       restSeconds: _restController.text.isEmpty
           ? null
           : int.tryParse(_restController.text),
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
+      notes: notesText.isEmpty ? null : notesText, 
     );
     widget.onChanged(updatedSeries);
   }
@@ -316,6 +318,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                         .toList(),
                     if (widget.canDelete) ...[
                       const PopupMenuDivider(),
+                      PopupMenuDivider(),
                       PopupMenuItem(
                         onTap: widget.onDelete,
                         child: const Row(
@@ -350,7 +353,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                           FilteringTextInputFormatter.digitsOnly,
                         ],
                         decoration: const InputDecoration(
-                          labelText: 'repetitions',
+                          labelText: 'Repetições',
                           hintText: '12',
                           prefixIcon: Icon(Icons.repeat),
                           border: OutlineInputBorder(),
@@ -411,7 +414,7 @@ class _SeriesCardState extends State<_SeriesCard> {
 
             if (_shouldShowField('rest_seconds')) const SizedBox(height: 12),
 
-            // Notas (sempre disponível)
+            // Notas 
             TextField(
               controller: _notesController,
               maxLines: 2,
@@ -422,7 +425,12 @@ class _SeriesCardState extends State<_SeriesCard> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              onChanged: (_) => _updateSeries(),
+              onChanged: (value) {
+                if (value.trim().isEmpty && value.isNotEmpty) {
+                  _notesController.clear();
+                }
+                _updateSeries();
+              },
             ),
           ],
         ),

@@ -245,14 +245,6 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   Spacer(),
-                  Text(
-                    '${_allExercises.where((e) => e.isCustom).length} personalizados',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue[600],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -341,7 +333,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Icon(
-            _getMuscleGroupIcon(exercise.category),
+            _getCategoryIcon(exercise.category),
             color: color,
             size: 24,
           ),
@@ -565,7 +557,6 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                               ),
                             ),
                             Spacer(),
-                            // ✅ BOTÕES DE AÇÃO RÁPIDA
                             if (exercise.isCustom) ...[
                               IconButton(
                                 icon: Icon(
@@ -626,34 +617,11 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  IconData _getMuscleGroupIcon(String muscleGroup) {
-    switch (muscleGroup.toLowerCase()) {
-      case 'peito':
-        return Icons.accessibility_new;
-      case 'costas':
-        return Icons.fitness_center;
-      case 'pernas':
-      case 'quadricps':
-      case 'posterior':
-        return Icons.directions_run;
-      case 'ombros':
-        return Icons.sports_gymnastics;
-      case 'braços':
-      case 'bíceps':
-      case 'tríceps':
-      case 'Antebraços':
-        return Icons.sports_handball;
-      case 'abdômen':
-        return Icons.crop_free;
-      case 'glúteos':
-        return Icons.sports_martial_arts;
-      case 'cardio':
-        return Icons.favorite;
-      case 'funcional':
-        return Icons.sports;
-      default:
-        return Icons.fitness_center;
+  IconData _getCategoryIcon(String category) {
+    if (category == 'Todos') {
+      return Icons.list;
     }
+    return AppConstants.getMuscleGroupIcon(category);
   }
 
   String _formatDate(DateTime date) {

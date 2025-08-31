@@ -56,14 +56,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
           _series = List.from(seriesList);
           if (_series.isEmpty) {
             _series.add(WorkoutSeries(
-              id: null, // MUDANÇA: usar null ao invés de 0
+              id: null,
               workoutExerciseId: workoutExerciseId,
               seriesNumber: 1,
               type: SeriesType.valid,
               repetitions: 12,
               weight: 0.0,
               restSeconds: 60,
-              notes: "",
+              notes: null,
             ));
           }
         });
@@ -82,13 +82,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
     try {
       final data = widget.workoutExerciseData;
       
-      // Atualizar o workout exercise
+      final notesText = _notesController.text.trim();
+      
       final workoutExercise = WorkoutExercise(
         id: data['id'],
         workoutId: data['workout_id'],
         exerciseId: data['exercise_id'],
         orderIndex: data['order_index'],
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
+        notes: notesText.isEmpty ? null : notesText, // CORREÇÃO: usar trim()
         createdAt: DateTime.fromMillisecondsSinceEpoch(data['created_at']),
       );
 
@@ -117,13 +118,11 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
   Future<void> _updateSeries() async {
     final workoutExerciseId = widget.workoutExerciseData['id'];
     
-    // Primeiro, excluir todas as séries existentes
     await _databaseService.series.deleteSeriesByWorkoutExercise(workoutExerciseId);
     
-    // Depois, inserir as novas séries (sem ID - deixar o banco gerar)
     for (int i = 0; i < _series.length; i++) {
       final series = WorkoutSeries(
-        id: null, // MUDANÇA: sempre null para novas inserções
+        id: null,
         workoutExerciseId: workoutExerciseId,
         seriesNumber: i + 1,
         type: _series[i].type,
@@ -143,14 +142,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
     setState(() {
       _series.add(
         WorkoutSeries(
-          id: null, // MUDANÇA: usar null ao invés de 0
+          id: null,
           workoutExerciseId: widget.workoutExerciseData['id'],
           seriesNumber: _series.length + 1,
           type: type,
           repetitions: type == SeriesType.valid ? 12 : null,
-          weight: type == SeriesType.rest ? null : 0.0, // MUDANÇA: null para tipo rest
-          restSeconds: type == SeriesType.rest ? 30 : 60, // MUDANÇA: valor padrão melhor
-          notes: "",
+          weight: type == SeriesType.rest ? null : 0.0,
+          restSeconds: type == SeriesType.rest ? 30 : 60,
+          notes: null, 
         ),
       );
     });
@@ -171,7 +170,6 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
     setState(() {
       _series.removeAt(index);
-      // Não é necessário renumerar aqui, será feito no _updateSeries()
     });
   }
 
@@ -263,7 +261,6 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                                 ),
                               ],
                             ),
-                            // ADICIONE DICA VISUAL AQUI
                             const SizedBox(height: 4),
                             Row(
                               children: [
@@ -311,6 +308,11 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                           prefixIcon: Icon(Icons.notes),
                           border: OutlineInputBorder(),
                         ),
+                        onChanged: (value) {
+                          if (value.trim().isEmpty && value.isNotEmpty) {
+                            _notesController.clear();
+                          }
+                        },
                       ),
                       
                       const SizedBox(height: 24),
@@ -358,7 +360,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         final index = entry.key;
                         final series = entry.value;
                         return _SeriesCard(
-                          key: ValueKey('series_temp_$index'), // MUDANÇA: usar índice temporário
+                          key: ValueKey('series_temp_$index'),
                           series: series,
                           seriesNumber: index + 1,
                           onChanged: (updatedSeries) => _updateSeriesAtIndex(index, updatedSeries),
@@ -485,6 +487,8 @@ class _SeriesCardState extends State<_SeriesCard> {
   void _updateSeries() {
     if (!mounted) return;
     
+    final notesText = _notesController.text.trim();
+    
     final updatedSeries = widget.series.copyWith(
       type: _selectedType,
       repetitions: _repsController.text.isEmpty
@@ -496,7 +500,7 @@ class _SeriesCardState extends State<_SeriesCard> {
       restSeconds: _restController.text.isEmpty
           ? null
           : int.tryParse(_restController.text),
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
+      notes: notesText.isEmpty ? null : notesText, 
     );
     widget.onChanged(updatedSeries);
   }
@@ -553,7 +557,6 @@ class _SeriesCardState extends State<_SeriesCard> {
                       setState(() {
                         _selectedType = newType;
                         
-                        // MUDANÇA: Ajustar campos baseado no tipo
                         if (newType == SeriesType.rest) {
                           _repsController.clear();
                           _weightController.clear();
@@ -704,7 +707,12 @@ class _SeriesCardState extends State<_SeriesCard> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              onChanged: (_) => _updateSeries(),
+              onChanged: (value) {
+                if (value.trim().isEmpty && value.isNotEmpty) {
+                  _notesController.clear();
+                }
+                _updateSeries();
+              },
             ),
           ],
         ),

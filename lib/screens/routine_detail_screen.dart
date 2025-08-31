@@ -75,10 +75,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   _buildRoutineInfo(),
                   SizedBox(height: 20),
 
-                  // Estatísticas
-                  _buildStats(),
-                  SizedBox(height: 20),
-
                   // Lista de treinos
                   _buildWorkoutsList(),
                 ],
@@ -161,16 +157,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.analytics, color: Colors.indigo[600]),
-                SizedBox(width: 8),
-                Text(
-                  'Estatísticas',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
             SizedBox(height: 16),
             Row(
               children: [

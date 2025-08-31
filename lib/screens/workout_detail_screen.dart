@@ -90,7 +90,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       'category': workoutExercise.exercise?.category ?? '',
       'description': workoutExercise.exercise?.description ?? '',
       'instructions': workoutExercise.exercise?.instructions ?? '',
-      'image_url': workoutExercise.exercise?.imageUrl, // ADICIONE ESTA LINHA
+      'image_url': workoutExercise.exercise?.imageUrl,
     };
 
     if (!mounted) return;
@@ -99,7 +99,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       context: context,
       builder: (context) => EditWorkoutExerciseDialog(
         workoutExerciseData: exerciseData,
-        onUpdated: () {}, // Callback vazio
+        onUpdated: () {},
       ),
     );
 
@@ -318,19 +318,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             // Header do exercício
             Row(
               children: [
-                // Imagem do exercício (ATUALIZADA COM FUNCIONALIDADE DE CLIQUE)
+                // Imagem do exercício
                 ExerciseImageWidget(
                   imageUrl: exercise?.imageUrl,
                   width: 60,
                   height: 60,
                   category: exercise?.category,
                   borderRadius: BorderRadius.circular(8),
-                  enableTap: true, // Habilita o clique
-                  exerciseName: exercise?.name ?? 'Exercício', // Nome do exercício
+                  enableTap: true,
+                  exerciseName: exercise?.name ?? 'Exercício',
                 ),
                 const SizedBox(width: 12),
                 
-                // Número do exercício (círculo menor)
+                // Número do exercício
                 Container(
                   width: 30,
                   height: 30,
@@ -386,7 +386,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           ),
                         ],
                       ),
-                      // ADICIONE ESTA DICA VISUAL ABAIXO DA CATEGORIA
                       const SizedBox(height: 2),
                       Row(
                         children: [
@@ -461,9 +460,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: series.asMap().entries.map((entry) {
                   final index = entry.key;
                   final s = entry.value;
@@ -471,29 +469,73 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   final seriesTypeName = AppConstants.getSeriesTypeName(s.type);
                   
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: seriesTypeColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: seriesTypeColor.withOpacity(0.3)),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          AppConstants.getSeriesTypeIcon(s.type),
-                          size: 12,
-                          color: seriesTypeColor,
+                        Row(
+                          children: [
+                            Icon(
+                              AppConstants.getSeriesTypeIcon(s.type),
+                              size: 16,
+                              color: seriesTypeColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _buildSeriesText(s, index + 1, seriesTypeName),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: seriesTypeColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _buildSeriesText(s, index + 1, seriesTypeName),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: seriesTypeColor,
-                            fontWeight: FontWeight.w500,
+                        // Mostrar notas da série se existirem
+                        if (s.notes != null && 
+                            s.notes!.trim().isNotEmpty && 
+                            s.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.sticky_note_2_outlined,
+                                  size: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    s.notes!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[700],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   );
@@ -501,8 +543,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
             ],
             
-            // Notas (se houver)
-            if (workoutExercise.notes != null && workoutExercise.notes!.isNotEmpty) ...[
+            // Notas do exercício (se houver)
+            if (workoutExercise.notes != null && 
+                workoutExercise.notes!.trim().isNotEmpty &&
+                workoutExercise.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,

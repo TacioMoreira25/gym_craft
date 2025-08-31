@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gym_craft/utils/constants.dart';
 import 'exercise_management_screen.dart';
 import '../models/exercise.dart';
 import '../services/database_service.dart';
@@ -20,16 +21,35 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
 {
   final DatabaseService _databaseService = DatabaseService();
 
-  List<Exercise> allExercises = [];
-  List<Exercise> filteredExercises = [];
+  List<Exercise> _exercises = [];
+  List<Exercise> _filteredExercises = [];
   String searchQuery = '';
-  String? selectedCategory;
-  bool isLoading = true;
+  String _selectedCategory = 'Todos';
+  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+
 
   @override
   void initState() {
     super.initState();
     _loadExercises();
+  }
+
+  final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
+
+
+   IconData _getCategoryIcon(String category) {
+    if (category == 'Todos') {
+      return Icons.list;
+    }
+    return AppConstants.getMuscleGroupIcon(category);
+  }
+
+  Color _getCategoryColor(String category) {
+    if (category == 'Todos') {
+      return Colors.indigo;
+    }
+    return AppConstants.getMuscleGroupColor(category);
   }
 
   @override
@@ -46,7 +66,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
           ),
         ],
       ),
-      body: isLoading ? _buildLoadingState() : _buildBody(),
+      body: _isLoading ? _buildLoadingState() : _buildBody(),
     );
   }
 
@@ -65,54 +85,70 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
           child: Column(
             children: [
               // Campo de busca
-              TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Buscar exercícios...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+             TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar exercícios...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => _filterExercises(),
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    searchQuery = value;
-                    _filterExercises();
-                  });
-                },
-              ),
               const SizedBox(height: 12),
               
               // Filtro por categoria
-              DropdownButtonFormField<String>(
-                value: selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Filtrar por categoria',
-                  border: OutlineInputBorder(),
+               SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      final isSelected = category == _selectedCategory;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          avatar: Icon(
+                            _getCategoryIcon(category),
+                            size: 18,
+                            color: isSelected 
+                                ? _getCategoryColor(category)
+                                : Colors.grey[600],
+                          ),
+                          label: Text(category),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedCategory = category;
+                              _filterExercises();
+                            });
+                          },
+                          selectedColor: _getCategoryColor(category).withOpacity(0.2),
+                          checkmarkColor: _getCategoryColor(category),
+                          labelStyle: TextStyle(
+                            color: isSelected 
+                                ? _getCategoryColor(category)
+                                : Colors.grey[700],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                items: _getCategories().map((category) {
-                  return DropdownMenuItem(
-                    value: category == 'Todas' ? null : category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedCategory = value;
-                    _filterExercises();
-                  });
-                },
-              ),
             ],
           ),
         ),
         
         // Lista de exercícios
         Expanded(
-          child: filteredExercises.isEmpty
+          child: _filteredExercises.isEmpty
               ? _buildEmptyState()
 
               : ListView.builder(
-                  itemCount: filteredExercises.length,
+                  itemCount: _filteredExercises.length,
                   itemBuilder: (context, index) {
-                    final exercise = filteredExercises[index];
+                    final exercise = _filteredExercises[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: ListTile
@@ -129,7 +165,12 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(exercise.category),
+                            Text(exercise.category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppConstants.getMuscleGroupColor(exercise.category),
+                              ),
+                            ),
                             if (exercise.description?.isNotEmpty == true)
                               Text(
                                 exercise.description!,
@@ -145,11 +186,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
                                 decoration: BoxDecoration(
                                   color: Colors.blue[100],
                                   borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Text(
-                                  'Personalizado',
-                                  style: TextStyle(fontSize: 10, color: Colors.blue),
-                                ),
+                                ),                            
                               )
                             : null,
                         onTap: () => Navigator.pop(context, exercise),
@@ -204,47 +241,56 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
         builder: (context) => const ExerciseManagementScreen(),
       ),
     );
-    _loadExercises(); // Recarregar exercícios
+    _loadExercises(); 
   }
 
   Future<void> _loadExercises() async {
+    setState(() => _isLoading = true);
     try {
       final exercises = await _databaseService.exercises.getAllExercises();
-      final availableExercises = exercises
-          .where((e) => !widget.excludeExerciseIds.contains(e.id))
-          .toList();
-      
-      if (mounted) {
-        setState(() {
-          allExercises = availableExercises;
-          isLoading = false;
-        });
+      setState(() {
+        _exercises = exercises;
         _filterExercises();
-      }
+        _isLoading = false;
+      });
     } catch (e) {
+      setState(() => _isLoading = false);
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar exercícios: $e')),
+          SnackBar(
+            content: Text('Erro ao carregar exercícios: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
-  void _filterExercises() {
-    filteredExercises = allExercises.where((exercise) {
-      final matchesSearch = exercise.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                           (exercise.description?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
-      final matchesCategory = selectedCategory == null || exercise.category == selectedCategory;
-      
-      return matchesSearch && matchesCategory;
-    }).toList();
+
+   void _filterExercises() {
+    List<Exercise> filtered = _exercises;
+
+    // Filtrar por categoria
+    if (_selectedCategory != 'Todos') {
+      filtered = filtered.where((e) => e.category == _selectedCategory).toList();
+    }
+
+    // Filtrar por busca
+    final searchQuery = _searchController.text.toLowerCase();
+    if (searchQuery.isNotEmpty) {
+      filtered = filtered.where((e) =>
+        e.name.toLowerCase().contains(searchQuery) ||
+        (e.description?.toLowerCase().contains(searchQuery) ?? false)
+      ).toList();
+    }
+
+    setState(() {
+      _filteredExercises = filtered;
+    });
   }
 
   List<String> _getCategories() {
-    final categories = allExercises.map((e) => e.category).toSet().toList();
+    final categories = _exercises.map((e) => e.category).toSet().toList();
     categories.sort();
     return ['Todas', ...categories];
   }
