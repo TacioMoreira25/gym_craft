@@ -3,6 +3,7 @@ import '../services/database_service.dart';
 import '../models/routine.dart';
 import 'create_routine_screen.dart';
 import 'routine_detail_screen.dart';
+import 'settings_screen.dart'; 
 import '../widgets/edit_routine_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,25 +34,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _editRoutine(Routine routine) {
-  showDialog(
-    context: context,
-    builder: (context) => EditRoutineDialog(
-      routine: routine,
-      onUpdated: () {
-        _loadRoutines();
-      },
-    ),
-  );
-}
+    showDialog(
+      context: context,
+      builder: (context) => EditRoutineDialog(
+        routine: routine,
+        onUpdated: () {
+          _loadRoutines();
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Minhas Rotinas')
+        title: const Text('Minhas Rotinas'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        actions: [
+          // Botão de configurações
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.settings),
+            tooltip: 'Configurações',
+          ),
+        ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : _routines.isEmpty
               ? _buildEmptyState()
               : _buildRoutinesList(),
@@ -62,70 +80,79 @@ class _HomeScreenState extends State<HomeScreen> {
             MaterialPageRoute(builder: (context) => CreateRoutineScreen()),
           ).then((_) => _loadRoutines());
         },
-        icon: Icon(Icons.add),
-        label: Text('Nova Rotina'),
-        backgroundColor: Colors.indigo[700],
-        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Nova Rotina'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.fitness_center,
               size: 120,
-              color: Colors.grey[300],
+              color: theme.colorScheme.outline,
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Text(
               'Bem-vindo ao seu app de treinos!',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
+                color: theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Crie sua primeira rotina de treinos para começar',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.indigo[50],
+                color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.indigo[200]!),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.3),
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.lightbulb, color: Colors.indigo[600], size: 32),
-                  SizedBox(height: 8),
+                  Icon(
+                    Icons.lightbulb,
+                    color: theme.colorScheme.primary,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     'Dica:',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.indigo[800],
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Uma rotina pode conter vários treinos (ex: Treino A, Treino B, Push, Pull, etc.)',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.indigo[700],
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -139,19 +166,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRoutinesList() {
+    final theme = Theme.of(context);
+    
     return RefreshIndicator(
       onRefresh: _loadRoutines,
       child: ListView.builder(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         itemCount: _routines.length,
         itemBuilder: (context, index) {
           final routine = _routines[index];
           return Card(
             elevation: 3,
-            margin: EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(bottom: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            color: theme.colorScheme.surface,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
@@ -163,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).then((_) => _loadRoutines());
               },
               child: Padding(
-                padding: EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -176,19 +206,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ),
                         PopupMenuButton(
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                           itemBuilder: (context) => [
                             PopupMenuItem(
                               value: 'edit',
                               child: Row(
                                 children: [
-                                  Icon(Icons.edit, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Editar'),
+                                  Icon(
+                                    Icons.edit,
+                                    size: 18,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Editar'),
                                 ],
                               ),
                             ),
@@ -196,9 +234,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete, color: Colors.red, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Excluir', style: TextStyle(color: Colors.red)),
+                                  Icon(
+                                    Icons.delete,
+                                    color: theme.colorScheme.error,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Excluir',
+                                    style: TextStyle(color: theme.colorScheme.error),
+                                  ),
                                 ],
                               ),
                             ),
@@ -214,22 +259,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     if (routine.description?.isNotEmpty == true) ...[
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         routine.description!,
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey[600],
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: routine.isActive ? Colors.green[100] : Colors.grey[100],
+                            color: routine.isActive 
+                                ? theme.colorScheme.primaryContainer
+                                : theme.colorScheme.surfaceVariant,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -237,18 +284,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: routine.isActive ? Colors.green[700] : Colors.grey[700],
+                              color: routine.isActive 
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
-                        Spacer(),
-                        Icon(Icons.calendar_today, size: 16, color: Colors.grey[500]),
-                        SizedBox(width: 4),
+                        const Spacer(),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
                           _formatDate(routine.createdAt),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -264,39 +317,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showDeleteDialog(Routine routine) {
+    final theme = Theme.of(context);
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Confirmar Exclusão'),
+          backgroundColor: theme.colorScheme.surface,
+          title: Text(
+            'Confirmar Exclusão',
+            style: TextStyle(color: theme.colorScheme.onSurface),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Tem certeza que deseja excluir a rotina:'),
-              SizedBox(height: 8),
+              Text(
+                'Tem certeza que deseja excluir a rotina:',
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              const SizedBox(height: 8),
               Text(
                 '"${routine.name}"',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: theme.colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[200]!),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withOpacity(0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, color: Colors.red[600], size: 20),
-                    SizedBox(width: 8),
+                    Icon(
+                      Icons.warning,
+                      color: theme.colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Todos os treinos e exercícios desta rotina serão excluídos permanentemente.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.red[700],
+                          color: theme.colorScheme.onErrorContainer,
                         ),
                       ),
                     ),
@@ -308,25 +379,30 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _databaseService.routines.deleteRoutine(routine.id!);
                 _loadRoutines();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Rotina "${routine.name}" excluída com sucesso!'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Rotina "${routine.name}" excluída com sucesso!'),
+                      backgroundColor: theme.colorScheme.error,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
               ),
-              child: Text('Excluir'),
+              child: const Text('Excluir'),
             ),
           ],
         );
