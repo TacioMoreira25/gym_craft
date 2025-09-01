@@ -1,12 +1,21 @@
-# Gym Craft 🏋️‍♂️  
+# Gym Craft 🏋️‍♂️
 
-App Android para **montar e organizar treinos de academia**.  
+App Android feito em **Flutter** para montar e organizar treinos de academia.
 
-## Funcionalidades  
+## Funcionalidades
 - Criar treinos personalizados  
 - Adicionar exercícios (séries, repetições, peso)  
 - Editar e excluir treinos  
 
-## Como rodar  
+## Como rodar
+
 ```bash
+# Clonar o repositório
 git clone https://github.com/TacioMoreira25/gym_craft.git
+cd gym_craft
+
+# Instalar dependências
+flutter pub get
+
+# Rodar no emulador ou dispositivo conectado
+flutter run
