@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
@@ -10,7 +12,7 @@ import '../widgets/add_workout_exercise_dialog.dart';
 import '../utils/constants.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
-import '../widgets/ImageViewerDialog.dart'; 
+import '../widgets/ImageViewerDialog.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
@@ -25,6 +27,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final DatabaseService _databaseService = DatabaseService();
   List<WorkoutExercise> _workoutExercises = [];
   bool _isLoading = true;
+  bool _isReorderMode = false; // Nova variável para controlar modo de reordenação
 
   @override
   void initState() {
@@ -34,13 +37,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Future<void> _loadWorkoutExercises() async {
     if (!mounted) return;
-    
+
     setState(() => _isLoading = true);
     try {
       final exercises = await _databaseService.workoutExercises.getWorkoutExercisesWithDetails(widget.workout.id!);
+
+      // Aplicar ordem salva se existir
+      final orderedExercises = await _applyCustomOrder(exercises);
+
       if (mounted) {
         setState(() {
-          _workoutExercises = exercises;
+          _workoutExercises = orderedExercises;
           _isLoading = false;
         });
       }
@@ -54,6 +61,56 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ),
         );
       }
+    }
+  }
+
+  // Aplicar ordem personalizada baseada no SharedPreferences
+  Future<List<WorkoutExercise>> _applyCustomOrder(List<WorkoutExercise> exercises) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? savedOrder = prefs.getString('exercise_order_${widget.workout.id}');
+
+      if (savedOrder == null) {
+        // Se não há ordem salva, retorna na ordem original
+        return exercises;
+      }
+
+      List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
+      List<WorkoutExercise> orderedExercises = [];
+
+      // Primeiro, adiciona os exercícios na ordem salva
+      for (int id in orderIds) {
+        WorkoutExercise? exercise = exercises.firstWhere(
+          (e) => e.id == id,
+          orElse: () => null as WorkoutExercise,
+        );
+        if (exercise != null) {
+          orderedExercises.add(exercise);
+        }
+      }
+
+      // Depois, adiciona qualquer exercício novo que não estava na ordem salva
+      for (WorkoutExercise exercise in exercises) {
+        if (!orderedExercises.any((e) => e.id == exercise.id)) {
+          orderedExercises.add(exercise);
+        }
+      }
+
+      return orderedExercises;
+    } catch (e) {
+      // Em caso de erro, retorna na ordem original
+      return exercises;
+    }
+  }
+
+  // Salvar ordem dos exercícios no SharedPreferences
+  Future<void> _saveExerciseOrder() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<int> exerciseIds = _workoutExercises.map((exercise) => exercise.id!).toList();
+      await prefs.setString('exercise_order_${widget.workout.id}', jsonEncode(exerciseIds));
+    } catch (e) {
+      print('Erro ao salvar ordem dos exercícios: $e');
     }
   }
 
@@ -94,7 +151,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     };
 
     if (!mounted) return;
-    
+
     await showDialog(
       context: context,
       builder: (context) => EditWorkoutExerciseDialog(
@@ -104,7 +161,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
 
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     if (mounted) {
       await _loadWorkoutExercises();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -137,7 +194,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Exercício removido do treino!'),
-                      backgroundColor: Colors.green,
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -158,40 +215,71 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.workout.name),
+        title: Text(_isReorderMode ? 'Reordenar Exercícios' : widget.workout.name),
         elevation: 0,
+        leading: _isReorderMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  setState(() => _isReorderMode = false);
+                },
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _addExercise,
-          ),
+          if (!_isReorderMode && _workoutExercises.isNotEmpty)
+            IconButton(
+              onPressed: () {
+                setState(() => _isReorderMode = true);
+              },
+              icon: const Icon(Icons.reorder),
+              tooltip: 'Reordenar Exercícios',
+            ),
+          if (_isReorderMode)
+            IconButton(
+              onPressed: () async {
+                await _saveExerciseOrder();
+                setState(() => _isReorderMode = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ordem dos exercícios salva!'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.check),
+              tooltip: 'Salvar Ordem',
+            ),
+          if (!_isReorderMode)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: _addExercise,
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Header com info do treino
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue[600]!, Colors.blue[800]!],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                if (!_isReorderMode) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue[600]!, Colors.blue[800]!],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildStatCard(
-                            'Exercícios',
-                            _workoutExercises.length.toString(),
-                            Icons.fitness_center,
-                          ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatCard(
+                              'Exercícios',
+                              _workoutExercises.length.toString(),
+                              Icons.fitness_center,
+                            ),
                           _buildStatCard(
                             'Séries Total',
                             _getTotalSeries().toString(),
@@ -222,7 +310,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         ),
                 ),
               ],
-            ),
+            ]
+          ),
     );
   }
 
@@ -303,7 +392,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final exercise = workoutExercise.exercise;
     final series = workoutExercise.series;
     final muscleGroupColor = AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -329,7 +418,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   exerciseName: exercise?.name ?? 'Exercício',
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Número do exercício
                 Container(
                   width: 30,
@@ -354,7 +443,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                
+
                 // Nome e grupo muscular
                 Expanded(
                   child: Column(
@@ -408,7 +497,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Menu de opções
                 PopupMenuButton(
                   icon: const Icon(Icons.more_vert),
@@ -467,7 +556,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   final s = entry.value;
                   final seriesTypeColor = AppConstants.getSeriesTypeColor(s.type);
                   final seriesTypeName = AppConstants.getSeriesTypeName(s.type);
-                  
+
                   return Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 6),
@@ -501,8 +590,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           ],
                         ),
                         // Mostrar notas da série se existirem
-                        if (s.notes != null && 
-                            s.notes!.trim().isNotEmpty && 
+                        if (s.notes != null &&
+                            s.notes!.trim().isNotEmpty &&
                             s.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Container(
@@ -542,9 +631,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 }).toList(),
               ),
             ],
-            
+
             // Notas do exercício (se houver)
-            if (workoutExercise.notes != null && 
+            if (workoutExercise.notes != null &&
                 workoutExercise.notes!.trim().isNotEmpty &&
                 workoutExercise.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -584,11 +673,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     switch (series.type) {
       case SeriesType.rest:
         return '$seriesNumberª $typeName: ${series.restSeconds ?? 0}s';
-      
+
       case SeriesType.warmup:
       case SeriesType.recognition:
         return '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
-      
+
       default:
         String text = '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
         if (series.weight != null && series.weight! > 0) {
@@ -609,7 +698,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     int totalTime = 0;
     for (final workoutExercise in _workoutExercises) {
       final series = workoutExercise.series;
-      
+
       for (final s in series) {
         if (s.type == SeriesType.rest) {
           totalTime += s.restSeconds ?? 30;

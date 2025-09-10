@@ -26,7 +26,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
   final DatabaseService _databaseService = DatabaseService();
-  
+
   bool _isLoading = false;
   List<SeriesData> _seriesList = [
     SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
@@ -66,22 +66,18 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
     setState(() => _isLoading = true);
 
     try {
-      // Pega o próximo order_index
       final nextOrder = await _databaseService.workoutExercises.getNextWorkoutExerciseOrder(widget.workoutId);
-      
-      // Criar o WorkoutExercise
+
       final workoutExercise = WorkoutExercise(
         workoutId: widget.workoutId,
         exerciseId: widget.selectedExercise.id!,
-        orderIndex: nextOrder, // Usar orderIndex correto
+        orderIndex: nextOrder,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         createdAt: DateTime.now(),
       );
 
-      // Salva o WorkoutExercise e obtém o ID
       final workoutExerciseId = await _databaseService.workoutExercises.insertWorkoutExercise(workoutExercise);
 
-      // Cria as séries vinculadas a esse WorkoutExercise
       List<WorkoutSeries> seriesList = [];
       for (int i = 0; i < _seriesList.length; i++) {
         final seriesData = _seriesList[i];
@@ -90,17 +86,16 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
           seriesNumber: i + 1,
           repetitions: seriesData.repetitions,
           weight: seriesData.weight,
-          restSeconds: seriesData.restSeconds, // Descanso individual por série
+          restSeconds: seriesData.restSeconds,
           type: seriesData.type,
           notes: seriesData.notes,
-          createdAt: DateTime.now(), // Adicionar createdAt
+          createdAt: DateTime.now(),
         );
         seriesList.add(series);
       }
 
-      // Salva todas as séries no banco
       await _databaseService.series.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
-      
+
       if (mounted) {
         Navigator.of(context).pop(true);
         widget.onExerciseAdded();
@@ -213,7 +208,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
 
   Widget _buildSeriesCard(int index) {
     final seriesData = _seriesList[index];
-    
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -242,7 +237,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                
+
                 const Expanded(
                   child: Text(
                     'Série',
@@ -252,7 +247,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                     ),
                   ),
                 ),
-                
+
                 // Botão remover
                 if (_seriesList.length > 1)
                   IconButton(
@@ -263,9 +258,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   ),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Campos da série
             Column(
               children: [
@@ -298,9 +293,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                         },
                       ),
                     ),
-                    
+
                     const SizedBox(width: 12),
-                    
+
                     // Peso
                     Expanded(
                       child: TextFormField(
@@ -333,9 +328,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Tempo de descanso individual
                 TextFormField(
                   initialValue: seriesData.restSeconds?.toString() ?? '60',
@@ -421,7 +416,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
               children: [
                 _buildInfoCard(),
                 const SizedBox(height: 20),
-                
+
                 // Título das séries
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -444,17 +439,17 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Lista de séries
-                ...List.generate(_seriesList.length, (index) => 
+                ...List.generate(_seriesList.length, (index) =>
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _buildSeriesCard(index),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Observações
                 TextFormField(
                   controller: _notesController,
@@ -509,7 +504,7 @@ class SeriesData {
   int? restSeconds;
   SeriesType type;
   String? notes;
-  
+
   SeriesData({
     this.repetitions,
     this.weight,

@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/routine.dart';
 import 'create_routine_screen.dart';
 import 'routine_detail_screen.dart';
-import 'settings_screen.dart'; 
+import 'settings_screen.dart';
 import '../widgets/edit_routine_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final DatabaseService _databaseService = DatabaseService();
   List<Routine> _routines = [];
   bool _isLoading = true;
-
+  bool _isReorderMode = false;
   @override
   void initState() {
     super.initState();
@@ -27,10 +29,57 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadRoutines() async {
     setState(() => _isLoading = true);
     final routines = await _databaseService.routines.getAllRoutines();
+
+    final orderedRoutines = await _applyCustomOrder(routines);
+
     setState(() {
-      _routines = routines;
+      _routines = orderedRoutines;
       _isLoading = false;
     });
+  }
+
+  Future<List<Routine>> _applyCustomOrder(List<Routine> routines) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? savedOrder = prefs.getString('routine_order');
+
+      if (savedOrder == null) {
+        return routines;
+      }
+
+      List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
+      List<Routine> orderedRoutines = [];
+
+      for (int id in orderIds) {
+        Routine? routine = routines.firstWhere(
+          (r) => r.id == id,
+          orElse: () => null as Routine,
+        );
+        if (routine != null) {
+          orderedRoutines.add(routine);
+        }
+      }
+
+      for (Routine routine in routines) {
+        if (!orderedRoutines.any((r) => r.id == routine.id)) {
+          orderedRoutines.add(routine);
+        }
+      }
+
+      return orderedRoutines;
+    } catch (e) {
+      return routines;
+    }
+  }
+
+  Future<void> _saveRoutineOrder() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<int> routineIds = _routines.map((routine) => routine.id!).toList();
+      await prefs.setString('routine_order', jsonEncode(routineIds));
+    } catch (e) {
+      print('Erro ao salvar ordem das rotinas: $e');
+    }
   }
 
   void _editRoutine(Routine routine) {
@@ -46,52 +95,213 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Minhas Rotinas'),
+        title: Text(_isReorderMode ? 'Reordenar Rotinas' : 'Minhas Rotinas'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        leading: _isReorderMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  setState(() => _isReorderMode = false);
+                },
+              )
+            : null,
         actions: [
-          // Botão de configurações
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.settings),
-            tooltip: 'Configurações',
-          ),
+          if (!_isReorderMode && _routines.isNotEmpty)
+            IconButton(
+              onPressed: () {
+                setState(() => _isReorderMode = true);
+              },
+              icon: const Icon(Icons.reorder),
+              tooltip: 'Reordenar Rotinas',
+            ),
+          if (_isReorderMode)
+            IconButton(
+              onPressed: () async {
+                await _saveRoutineOrder();
+                setState(() => _isReorderMode = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ordem das rotinas salva!'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.check),
+              tooltip: 'Salvar Ordem',
+            ),
+          if (!_isReorderMode)
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.settings),
+              tooltip: 'Configurações',
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _routines.isEmpty
               ? _buildEmptyState()
-              : _buildRoutinesList(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CreateRoutineScreen()),
-          ).then((_) => _loadRoutines());
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Nova Rotina'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
+              : _isReorderMode
+                  ? _buildReorderableList()
+                  : _buildRoutinesList(),
+      floatingActionButton: _isReorderMode
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CreateRoutineScreen()),
+                ).then((_) => _loadRoutines());
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Nova Rotina'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+      );
+  }
+
+  Widget _buildReorderableList() {
+    final theme = Theme.of(context);
+
+    return ReorderableListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _routines.length,
+      onReorder: (oldIndex, newIndex) {
+        setState(() {
+          if (oldIndex < newIndex) {
+            newIndex -= 1;
+          }
+          final Routine routine = _routines.removeAt(oldIndex);
+          _routines.insert(newIndex, routine);
+        });
+      },
+      itemBuilder: (context, index) {
+        final routine = _routines[index];
+        return Card(
+          key: ValueKey('routine_${routine.id}'),
+          elevation: 3,
+          margin: const EdgeInsets.only(bottom: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          color: theme.colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Indicador de posição
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Informações da rotina
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        routine.name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      if (routine.description?.isNotEmpty == true) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          routine.description!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: routine.isActive
+                              ? theme.colorScheme.primaryContainer
+                              : theme.colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          routine.isActive ? 'ATIVA' : 'INATIVA',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: routine.isActive
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Handle para arrastar
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.drag_handle,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        Text(
+                          'Arraste',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildEmptyState() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -167,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRoutinesList() {
     final theme = Theme.of(context);
-    
+
     return RefreshIndicator(
       onRefresh: _loadRoutines,
       child: ListView.builder(
@@ -274,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: routine.isActive 
+                            color: routine.isActive
                                 ? theme.colorScheme.primaryContainer
                                 : theme.colorScheme.surfaceVariant,
                             borderRadius: BorderRadius.circular(12),
@@ -284,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: routine.isActive 
+                              color: routine.isActive
                                   ? theme.colorScheme.onPrimaryContainer
                                   : theme.colorScheme.onSurfaceVariant,
                             ),
@@ -318,7 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showDeleteDialog(Routine routine) {
     final theme = Theme.of(context);
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {

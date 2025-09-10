@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
@@ -21,6 +23,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   List<Workout> _workouts = [];
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
+  bool _isReorderMode = false; // Nova variável para controlar modo de reordenação
 
   @override
   void initState() {
@@ -36,32 +39,116 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
     final stats = await _databaseService.routines.getRoutineStats(widget.routine.id!);
 
+    // Aplicar ordem salva se existir
+    final orderedWorkouts = await _applyCustomOrder(workouts);
+
     setState(() {
-      _workouts = workouts;
+      _workouts = orderedWorkouts;
       _stats = stats;
       _isLoading = false;
     });
+  }
+
+  // Aplicar ordem personalizada baseada no SharedPreferences
+  Future<List<Workout>> _applyCustomOrder(List<Workout> workouts) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? savedOrder = prefs.getString('workout_order_${widget.routine.id}');
+
+      if (savedOrder == null) {
+        // Se não há ordem salva, retorna na ordem original
+        return workouts;
+      }
+
+      List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
+      List<Workout> orderedWorkouts = [];
+
+      // Primeiro, adiciona os workouts na ordem salva
+      for (int id in orderIds) {
+        Workout? workout = workouts.firstWhere(
+          (w) => w.id == id,
+          orElse: () => null as Workout,
+        );
+        if (workout != null) {
+          orderedWorkouts.add(workout);
+        }
+      }
+
+      // Depois, adiciona qualquer workout novo que não estava na ordem salva
+      for (Workout workout in workouts) {
+        if (!orderedWorkouts.any((w) => w.id == workout.id)) {
+          orderedWorkouts.add(workout);
+        }
+      }
+
+      return orderedWorkouts;
+    } catch (e) {
+      // Em caso de erro, retorna na ordem original
+      return workouts;
+    }
+  }
+
+  // Salvar ordem dos workouts no SharedPreferences
+  Future<void> _saveWorkoutOrder() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<int> workoutIds = _workouts.map((workout) => workout.id!).toList();
+      await prefs.setString('workout_order_${widget.routine.id}', jsonEncode(workoutIds));
+    } catch (e) {
+      print('Erro ao salvar ordem dos treinos: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.routine.name),
+        title: Text(_isReorderMode ? 'Reordenar Treinos' : widget.routine.name),
+        leading: _isReorderMode
+            ? IconButton(
+                icon: Icon(Icons.close),
+                onPressed: () {
+                  setState(() => _isReorderMode = false);
+                },
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      CreateWorkoutScreen(routine: widget.routine),
-                ),
-              ).then((_) => _loadData());
-            },
-            tooltip: 'Adicionar Treino',
-          ),
+          if (!_isReorderMode && _workouts.isNotEmpty)
+            IconButton(
+              onPressed: () {
+                setState(() => _isReorderMode = true);
+              },
+              icon: Icon(Icons.reorder),
+              tooltip: 'Reordenar Treinos',
+            ),
+          if (_isReorderMode)
+            IconButton(
+              onPressed: () async {
+                await _saveWorkoutOrder();
+                setState(() => _isReorderMode = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Ordem dos treinos salva!'),
+                  ),
+                );
+              },
+              icon: Icon(Icons.check),
+              tooltip: 'Salvar Ordem',
+            ),
+          if (!_isReorderMode)
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CreateWorkoutScreen(routine: widget.routine),
+                  ),
+                ).then((_) => _loadData());
+              },
+              tooltip: 'Adicionar Treino',
+            ),
         ],
       ),
       body: _isLoading
@@ -72,8 +159,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Informações da rotina
-                  _buildRoutineInfo(),
-                  SizedBox(height: 20),
+                  if (!_isReorderMode) ...[
+                    _buildRoutineInfo(),
+                    SizedBox(height: 20),
+                  ],
 
                   // Lista de treinos
                   _buildWorkoutsList(),
@@ -85,7 +174,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
 Widget _buildRoutineInfo() {
   final theme = Theme.of(context);
-  
+
   return Card(
     color: theme.colorScheme.surface,
     child: Padding(
@@ -96,14 +185,14 @@ Widget _buildRoutineInfo() {
           Row(
             children: [
               Icon(
-                Icons.info_outline, 
+                Icons.info_outline,
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Text(
                 'Informações da Rotina',
                 style: TextStyle(
-                  fontSize: 18, 
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
                 ),
@@ -152,7 +241,7 @@ Widget _buildRoutineInfo() {
               Text(
                 'Criada em ${_formatDate(widget.routine.createdAt)}',
                 style: TextStyle(
-                  fontSize: 12, 
+                  fontSize: 12,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -163,6 +252,7 @@ Widget _buildRoutineInfo() {
     ),
   );
 }
+
   Widget _buildStats() {
     return Card(
       child: Padding(
@@ -282,7 +372,7 @@ Widget _buildRoutineInfo() {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Treinos (${_workouts.length})',
+              _isReorderMode ? 'Reordenar Treinos' : 'Treinos (${_workouts.length})',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
@@ -291,12 +381,98 @@ Widget _buildRoutineInfo() {
 
         if (_workouts.isEmpty)
           _buildEmptyWorkouts()
+        else if (_isReorderMode)
+          _buildReorderableWorkoutsList()
         else
           ...List.generate(_workouts.length, (index) {
             final workout = _workouts[index];
             return _buildWorkoutCard(workout, index);
           }),
       ],
+    );
+  }
+
+  Widget _buildReorderableWorkoutsList() {
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: _workouts.length,
+      onReorder: (int oldIndex, int newIndex) {
+        setState(() {
+          if (newIndex > oldIndex) {
+            newIndex -= 1;
+          }
+          final Workout item = _workouts.removeAt(oldIndex);
+          _workouts.insert(newIndex, item);
+        });
+      },
+      itemBuilder: (context, index) {
+        final workout = _workouts[index];
+        return _buildReorderableWorkoutCard(workout, index);
+      },
+    );
+  }
+
+  Widget _buildReorderableWorkoutCard(Workout workout, int index) {
+    return Card(
+      key: ValueKey(workout.id),
+      margin: EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Ícone de arrastar
+            Icon(Icons.drag_handle, color: Colors.grey[500]),
+            SizedBox(width: 16),
+
+            // Número do treino
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.indigo[100],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo[700],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 16),
+
+            // Informações do treino
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (workout.description != null &&
+                      workout.description!.isNotEmpty) ...[
+                    SizedBox(height: 4),
+                    Text(
+                      workout.description!,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -451,7 +627,7 @@ Widget _buildRoutineInfo() {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Treino "${workout.name}" excluído!'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.red,
                   ),
                 );
               },

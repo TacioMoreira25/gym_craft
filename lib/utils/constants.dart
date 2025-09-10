@@ -39,12 +39,12 @@ class AppConstants {
     'Sexta',
     'Sabado',
   ];
-  
+
   static Map<String, Color> categoryColors = {
     'Peito': Colors.red,
     'Costas': Colors.blue,
     'Quadricps': Colors.green,
-    'Posterior': const Color.fromARGB(255, 0, 41, 1),
+    'Posterior': const Color.fromARGB(255, 3, 70, 5),
     'Glúteos': Colors.pinkAccent,
     'Ombros': Colors.brown,
     'Bíceps': Colors.orange,
@@ -71,13 +71,13 @@ class AppConstants {
   };
 
   static const Map<SeriesType, Color> seriesTypeColors = {
-    SeriesType.valid: Colors.green,
-    SeriesType.warmup: Colors.orange,
-    SeriesType.recognition: Colors.blue,
-    SeriesType.dropset: Colors.purple,
-    SeriesType.failure: Colors.red,
+    SeriesType.valid: Color.fromARGB(255, 59, 117, 61),
+    SeriesType.warmup: Color.fromARGB(255, 96, 73, 39),
+    SeriesType.recognition: Color.fromARGB(255, 41, 81, 114),
+    SeriesType.dropset: Color.fromARGB(255, 122, 64, 132),
+    SeriesType.failure: Color.fromARGB(255, 109, 32, 26),
     SeriesType.rest: Colors.grey,
-    SeriesType.negativa: Colors.indigo,
+    SeriesType.negativa: Color.fromARGB(255, 92, 107, 192),
   };
 
   static const Map<SeriesType, IconData> seriesTypeIcons = {
@@ -160,13 +160,13 @@ class AppConstants {
       case SeriesType.dropset:
       case SeriesType.failure:
       case SeriesType.negativa:
-        return true; 
+        return true;
       case SeriesType.warmup:
       case SeriesType.recognition:
-        return field != 'weight'; 
-      
+        return field != 'weight';
+
       case SeriesType.rest:
-        return field == 'rest'; 
+        return field == 'rest';
     }
   }
 }
