@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Routine> _routines = [];
   bool _isLoading = true;
   bool _isReorderMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -94,82 +95,100 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _exitReorderMode() {
+    setState(() => _isReorderMode = false);
+  }
+
+  // Método para lidar com o botão voltar
+  Future<bool> _onWillPop() async {
+    if (_isReorderMode) {
+      _exitReorderMode();
+      return false;
+    }
+    return true;
+  }
+
   @override
-  Widget build(BuildContext context)
-  {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isReorderMode ? 'Reordenar Rotinas' : 'Minhas Rotinas'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        leading: _isReorderMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isReorderMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isReorderMode) {
+          _exitReorderMode();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_isReorderMode ? 'Reordenar Rotinas' : 'Minhas Rotinas'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          leading: _isReorderMode
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitReorderMode,
+                )
+              : null,
+          actions: [
+            if (!_isReorderMode && _routines.isNotEmpty)
+              IconButton(
                 onPressed: () {
-                  setState(() => _isReorderMode = false);
+                  setState(() => _isReorderMode = true);
                 },
-              )
-            : null,
-        actions: [
-          if (!_isReorderMode && _routines.isNotEmpty)
-            IconButton(
-              onPressed: () {
-                setState(() => _isReorderMode = true);
-              },
-              icon: const Icon(Icons.reorder),
-              tooltip: 'Reordenar Rotinas',
-            ),
-          if (_isReorderMode)
-            IconButton(
-              onPressed: () async {
-                await _saveRoutineOrder();
-                setState(() => _isReorderMode = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Ordem das rotinas salva!'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.check),
-              tooltip: 'Salvar Ordem',
-            ),
-          if (!_isReorderMode)
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.settings),
-              tooltip: 'Configurações',
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _routines.isEmpty
-              ? _buildEmptyState()
-              : _isReorderMode
-                  ? _buildReorderableList()
-                  : _buildRoutinesList(),
-      floatingActionButton: _isReorderMode
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CreateRoutineScreen()),
-                ).then((_) => _loadRoutines());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Nova Rotina'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            ),
-      );
+                icon: const Icon(Icons.reorder),
+                tooltip: 'Reordenar Rotinas',
+              ),
+            if (_isReorderMode)
+              IconButton(
+                onPressed: () async {
+                  await _saveRoutineOrder();
+                  _exitReorderMode();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Ordem das rotinas salva!'),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.check),
+                tooltip: 'Salvar Ordem',
+              ),
+            if (!_isReorderMode)
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.settings),
+                tooltip: 'Configurações',
+              ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _routines.isEmpty
+                ? _buildEmptyState()
+                : _isReorderMode
+                    ? _buildReorderableList()
+                    : _buildRoutinesList(),
+        floatingActionButton: _isReorderMode
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CreateRoutineScreen()),
+                  ).then((_) => _loadRoutines());
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Nova Rotina'),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
+        ),
+    );
   }
 
   Widget _buildReorderableList() {

@@ -23,6 +23,18 @@ class WorkoutSeries {
     this.createdAt,
   });
 
+  String? _sanitizeNotes(String? input) {
+    if (input == null) return null;
+
+    String cleaned = input
+        .replaceAll(RegExp(r'[\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'), '')
+        .trim();
+
+    return cleaned.isEmpty ? null : cleaned;
+  }
+
+  String? get sanitizedNotes => _sanitizeNotes(notes);
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -32,7 +44,7 @@ class WorkoutSeries {
       'weight': weight,
       'rest_seconds': restSeconds,
       'type': type.name,
-      'notes': notes,
+      'notes': _sanitizeNotes(notes), // Sanitiza antes de salvar
       'created_at': (createdAt ?? DateTime.now()).millisecondsSinceEpoch,
     };
   }
@@ -40,17 +52,17 @@ class WorkoutSeries {
   factory WorkoutSeries.fromMap(Map<String, dynamic> map) {
     return WorkoutSeries(
       id: map['id'],
-      workoutExerciseId: map['workout_exercise_id'], 
-      seriesNumber: map['series_number'], 
-      repetitions: map['repetitions'], 
+      workoutExerciseId: map['workout_exercise_id'],
+      seriesNumber: map['series_number'],
+      repetitions: map['repetitions'],
       weight: map['weight']?.toDouble(),
-      restSeconds: map['rest_seconds'], 
+      restSeconds: map['rest_seconds'],
       type: SeriesType.values.firstWhere(
         (e) => e.name == map['type'],
         orElse: () => SeriesType.valid,
       ),
-      notes: map['notes'],
-      createdAt: map['created_at'] != null 
+      notes: map['notes']?.toString(),
+      createdAt: map['created_at'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['created_at'])
           : null,
     );
@@ -80,7 +92,6 @@ class WorkoutSeries {
     );
   }
 
-  // Métodos de utilidade
   String get typeDisplayName {
     switch (type) {
       case SeriesType.valid:
@@ -100,6 +111,20 @@ class WorkoutSeries {
     }
   }
 
+  String _formatRestTime(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      if (remainingSeconds == 0) {
+        return '${minutes}min';
+      } else {
+        return '${minutes}min ${remainingSeconds}s';
+      }
+    }
+  }
+
   String get summary {
     List<String> parts = [];
 
@@ -113,9 +138,9 @@ class WorkoutSeries {
 
     if (restSeconds != null) {
       if (type == SeriesType.rest) {
-        parts.add('${restSeconds}s');
+        parts.add(_formatRestTime(restSeconds!));
       } else {
-        parts.add('${restSeconds}s descanso');
+        parts.add('${_formatRestTime(restSeconds!)} desc');
       }
     }
 
@@ -139,9 +164,13 @@ class WorkoutSeries {
     }
   }
 
+  bool get hasValidNotes {
+    return sanitizedNotes != null && sanitizedNotes!.isNotEmpty;
+  }
+
   @override
   String toString() {
-    return 'WorkoutSeries{id: $id, type: $type, reps: $repetitions, weight: $weight, rest: $restSeconds}';
+    return 'WorkoutSeries{id: $id, type: $type, reps: $repetitions, weight: $weight, rest: $restSeconds, notes: ${hasValidNotes ? '"${sanitizedNotes}"' : 'null'}}';
   }
 
   @override
@@ -156,7 +185,7 @@ class WorkoutSeries {
           repetitions == other.repetitions &&
           weight == other.weight &&
           restSeconds == other.restSeconds &&
-          notes == other.notes;
+          sanitizedNotes == other.sanitizedNotes;
 
   @override
   int get hashCode =>
@@ -167,5 +196,5 @@ class WorkoutSeries {
       repetitions.hashCode ^
       weight.hashCode ^
       restSeconds.hashCode ^
-      notes.hashCode;
+      sanitizedNotes.hashCode;
 }

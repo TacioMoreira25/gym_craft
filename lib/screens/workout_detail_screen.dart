@@ -27,7 +27,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final DatabaseService _databaseService = DatabaseService();
   List<WorkoutExercise> _workoutExercises = [];
   bool _isLoading = true;
-  bool _isReorderMode = false; // Nova variável para controlar modo de reordenação
+  bool _isReorderMode = false;
 
   @override
   void initState() {
@@ -40,7 +40,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final exercises = await _databaseService.workoutExercises.getWorkoutExercisesWithDetails(widget.workout.id!);
+      final exercises = await _databaseService.workoutExercises
+          .getWorkoutExercisesWithDetails(widget.workout.id!);
 
       // Aplicar ordem salva se existir
       final orderedExercises = await _applyCustomOrder(exercises);
@@ -64,21 +65,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
-  // Aplicar ordem personalizada baseada no SharedPreferences
-  Future<List<WorkoutExercise>> _applyCustomOrder(List<WorkoutExercise> exercises) async {
+  Future<List<WorkoutExercise>> _applyCustomOrder(
+    List<WorkoutExercise> exercises,
+  ) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? savedOrder = prefs.getString('exercise_order_${widget.workout.id}');
+      String? savedOrder = prefs.getString(
+        'exercise_order_${widget.workout.id}',
+      );
 
       if (savedOrder == null) {
-        // Se não há ordem salva, retorna na ordem original
         return exercises;
       }
 
       List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
       List<WorkoutExercise> orderedExercises = [];
 
-      // Primeiro, adiciona os exercícios na ordem salva
       for (int id in orderIds) {
         WorkoutExercise? exercise = exercises.firstWhere(
           (e) => e.id == id,
@@ -89,7 +91,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         }
       }
 
-      // Depois, adiciona qualquer exercício novo que não estava na ordem salva
       for (WorkoutExercise exercise in exercises) {
         if (!orderedExercises.any((e) => e.id == exercise.id)) {
           orderedExercises.add(exercise);
@@ -98,17 +99,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
       return orderedExercises;
     } catch (e) {
-      // Em caso de erro, retorna na ordem original
       return exercises;
     }
   }
 
-  // Salvar ordem dos exercícios no SharedPreferences
   Future<void> _saveExerciseOrder() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      List<int> exerciseIds = _workoutExercises.map((exercise) => exercise.id!).toList();
-      await prefs.setString('exercise_order_${widget.workout.id}', jsonEncode(exerciseIds));
+      List<int> exerciseIds = _workoutExercises
+          .map((exercise) => exercise.id!)
+          .toList();
+      await prefs.setString(
+        'exercise_order_${widget.workout.id}',
+        jsonEncode(exerciseIds),
+      );
     } catch (e) {
       print('Erro ao salvar ordem dos exercícios: $e');
     }
@@ -116,9 +120,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Future<void> _addExercise() async {
     final Exercise? selectedExercise = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SelectExerciseScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const SelectExerciseScreen()),
     );
 
     if (selectedExercise != null && mounted) {
@@ -179,7 +181,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirmar Exclusão'),
-          content: Text('Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?'),
+          content: Text(
+            'Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -188,7 +192,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _databaseService.workoutExercises.deleteWorkoutExercise(workoutExercise.id!);
+                await _databaseService.workoutExercises.deleteWorkoutExercise(
+                  workoutExercise.id!,
+                );
                 if (mounted) {
                   _loadWorkoutExercises();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -211,107 +217,285 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
+  void _exitReorderMode() {
+    setState(() => _isReorderMode = false);
+  }
+
+  // Função para verificar se uma string é válida (não nula, não vazia, sem apenas espaços/caracteres especiais)
+  bool _isValidText(String? text) {
+    if (text == null) return false;
+
+    // Remove espaços e caracteres de controle/invisíveis
+    final cleanText = text
+        .replaceAll(RegExp(r'[\s\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'), '');
+
+    return cleanText.isNotEmpty;
+  }
+
+  // Função para formatar tempo de descanso
+  String _formatRestTime(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      if (remainingSeconds == 0) {
+        return '${minutes}min';
+      } else {
+        return '${minutes}min ${remainingSeconds}s';
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isReorderMode ? 'Reordenar Exercícios' : widget.workout.name),
-        elevation: 0,
-        leading: _isReorderMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
+    return PopScope(
+      canPop: !_isReorderMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isReorderMode) {
+          _exitReorderMode();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _isReorderMode ? 'Reordenar Exercícios' : widget.workout.name,
+          ),
+          elevation: 0,
+          leading: _isReorderMode
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitReorderMode,
+                )
+              : null,
+          actions: [
+            if (!_isReorderMode && _workoutExercises.isNotEmpty)
+              IconButton(
                 onPressed: () {
-                  setState(() => _isReorderMode = false);
+                  setState(() => _isReorderMode = true);
                 },
-              )
-            : null,
-        actions: [
-          if (!_isReorderMode && _workoutExercises.isNotEmpty)
-            IconButton(
-              onPressed: () {
-                setState(() => _isReorderMode = true);
-              },
-              icon: const Icon(Icons.reorder),
-              tooltip: 'Reordenar Exercícios',
-            ),
-          if (_isReorderMode)
-            IconButton(
-              onPressed: () async {
-                await _saveExerciseOrder();
-                setState(() => _isReorderMode = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Ordem dos exercícios salva!'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.check),
-              tooltip: 'Salvar Ordem',
-            ),
-          if (!_isReorderMode)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _addExercise,
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                if (!_isReorderMode) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue[600]!, Colors.blue[800]!],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
+                icon: const Icon(Icons.reorder),
+                tooltip: 'Reordenar Exercícios',
+              ),
+            if (_isReorderMode)
+              IconButton(
+                onPressed: () async {
+                  await _saveExerciseOrder();
+                  _exitReorderMode();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Ordem dos exercícios salva!'),
                     ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildStatCard(
-                              'Exercícios',
-                              _workoutExercises.length.toString(),
-                              Icons.fitness_center,
-                            ),
-                          _buildStatCard(
-                            'Séries Total',
-                            _getTotalSeries().toString(),
-                            Icons.repeat,
-                          ),
-                          _buildStatCard(
-                            'Tempo Est.',
-                            '${_calculateEstimatedTime()}min',
-                            Icons.timer,
+                  );
+                },
+                icon: const Icon(Icons.check),
+                tooltip: 'Salvar Ordem',
+              ),
+            if (!_isReorderMode)
+              IconButton(icon: const Icon(Icons.add), onPressed: _addExercise),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  if (!_isReorderMode) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue[600]!, Colors.blue[800]!],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStatCard(
+                                'Exercícios',
+                                _workoutExercises.length.toString(),
+                                Icons.fitness_center,
+                              ),
+                              _buildStatCard(
+                                'Séries Total',
+                                _getTotalSeries().toString(),
+                                Icons.repeat,
+                              ),
+                              _buildStatCard(
+                                'Tempo Est.',
+                                '${_calculateEstimatedTime()}min',
+                                Icons.timer,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+
+                  // Lista de exercícios
+                  Expanded(
+                    child: _workoutExercises.isEmpty
+                        ? _buildEmptyState()
+                        : _isReorderMode
+                        ? _buildReorderableExercisesList()
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _workoutExercises.length,
+                            itemBuilder: (context, index) {
+                              final workoutExercise = _workoutExercises[index];
+                              return _buildExerciseCard(workoutExercise, index);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildReorderableExercisesList() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Reordenar Exercícios',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Arraste os exercícios para reordená-los',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ReorderableListView.builder(
+              itemCount: _workoutExercises.length,
+              onReorder: (int oldIndex, int newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final WorkoutExercise item = _workoutExercises.removeAt(
+                    oldIndex,
+                  );
+                  _workoutExercises.insert(newIndex, item);
+                });
+              },
+              itemBuilder: (context, index) {
+                final workoutExercise = _workoutExercises[index];
+                return _buildReorderableExerciseCard(workoutExercise, index);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReorderableExerciseCard(
+    WorkoutExercise workoutExercise,
+    int index,
+  ) {
+    final exercise = workoutExercise.exercise;
+    final muscleGroupColor =
+        AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
+
+    return Card(
+      key: ValueKey(workoutExercise.id),
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Ícone de arrastar
+            Icon(Icons.drag_handle, color: Colors.grey[500]),
+            const SizedBox(width: 12),
+
+            ExerciseImageWidget(
+              imageUrl: exercise?.imageUrl,
+              width: 50,
+              height: 50,
+              category: exercise?.category,
+              borderRadius: BorderRadius.circular(8),
+              enableTap: false, // Desabilitado no modo reordenação
+              exerciseName: exercise?.name ?? 'Exercício',
+            ),
+            const SizedBox(width: 12),
+
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: muscleGroupColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: muscleGroupColor.withOpacity(0.5),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    color: muscleGroupColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(width: 12),
 
-                // Lista de exercícios
-                Expanded(
-                  child: _workoutExercises.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _workoutExercises.length,
-                          itemBuilder: (context, index) {
-                            final workoutExercise = _workoutExercises[index];
-                            return _buildExerciseCard(workoutExercise, index);
-                          },
+            // Nome e grupo muscular
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise?.name ?? 'Exercício',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.fitness_center,
+                        size: 14,
+                        color: muscleGroupColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        exercise?.category ?? '',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: muscleGroupColor,
+                          fontWeight: FontWeight.w500,
                         ),
-                ),
-              ],
-            ]
-          ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -319,7 +503,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(width: 8),
+        const SizedBox(height: 8),
         Text(
           value,
           style: const TextStyle(
@@ -330,10 +514,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
         ),
       ],
     );
@@ -346,11 +527,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.fitness_center,
-              size: 80,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.fitness_center, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Nenhum exercício adicionado',
@@ -363,9 +540,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             const SizedBox(height: 8),
             Text(
               'Toque no botão + para adicionar seu primeiro exercício',
-              style: TextStyle(
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -391,14 +566,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget _buildExerciseCard(WorkoutExercise workoutExercise, int index) {
     final exercise = workoutExercise.exercise;
     final series = workoutExercise.series;
-    final muscleGroupColor = AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
+    final muscleGroupColor =
+        AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -419,7 +593,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
                 const SizedBox(width: 12),
 
-                // Número do exercício
                 Container(
                   width: 30,
                   height: 30,
@@ -537,7 +710,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ],
             ),
 
-            // Detalhes das séries
             if (series.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
@@ -554,7 +726,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 children: series.asMap().entries.map((entry) {
                   final index = entry.key;
                   final s = entry.value;
-                  final seriesTypeColor = AppConstants.getSeriesTypeColor(s.type);
+                  final seriesTypeColor = AppConstants.getSeriesTypeColor(
+                    s.type,
+                  );
                   final seriesTypeName = AppConstants.getSeriesTypeName(s.type);
 
                   return Container(
@@ -564,7 +738,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     decoration: BoxDecoration(
                       color: seriesTypeColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: seriesTypeColor.withOpacity(0.3)),
+                      border: Border.all(
+                        color: seriesTypeColor.withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -589,10 +765,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                             ),
                           ],
                         ),
-                        // Mostrar notas da série se existirem
-                        if (s.notes != null &&
-                            s.notes!.trim().isNotEmpty &&
-                            s.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
+                        // Mostrar notas da série se existirem - usando validação melhorada
+                        if (_isValidText(s.notes)) ...[
                           const SizedBox(height: 6),
                           Container(
                             width: double.infinity,
@@ -613,7 +787,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    s.notes!,
+                                    s.notes!.trim(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey[700],
@@ -632,10 +806,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
             ],
 
-            // Notas do exercício (se houver)
-            if (workoutExercise.notes != null &&
-                workoutExercise.notes!.trim().isNotEmpty &&
-                workoutExercise.notes!.trim().replaceAll(RegExp(r'\s+'), '').isNotEmpty) ...[
+            // Notas do exercício - usando validação padrão
+            if (_isValidText(workoutExercise.notes)) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -652,7 +824,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        workoutExercise.notes!,
+                        workoutExercise.notes!.trim(),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.amber[800],
@@ -669,22 +841,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
-  String _buildSeriesText(WorkoutSeries series, int seriesNumber, String typeName) {
+  String _buildSeriesText(
+    WorkoutSeries series,
+    int seriesNumber,
+    String typeName,
+  ) {
     switch (series.type) {
       case SeriesType.rest:
-        return '$seriesNumberª $typeName: ${series.restSeconds ?? 0}s';
+        return '$seriesNumberª $typeName: ${_formatRestTime(series.restSeconds ?? 0)}';
 
       case SeriesType.warmup:
       case SeriesType.recognition:
         return '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
 
       default:
-        String text = '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
+        String text =
+            '$seriesNumberª $typeName: ${series.repetitions ?? 0} reps';
         if (series.weight != null && series.weight! > 0) {
           text += ' | ${series.weight}kg';
         }
         if (series.restSeconds != null && series.restSeconds! > 0) {
-          text += ' | ${series.restSeconds}s desc';
+          text += ' | ${_formatRestTime(series.restSeconds!)} desc';
         }
         return text;
     }
@@ -703,13 +880,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         if (s.type == SeriesType.rest) {
           totalTime += s.restSeconds ?? 30;
         } else {
-          totalTime += 30; // Tempo estimado de execução
+          totalTime += 30;
           if (s.restSeconds != null) {
-            totalTime += s.restSeconds!; // Tempo de descanso
+            totalTime += s.restSeconds!;
           }
         }
       }
     }
-    return (totalTime / 60).ceil(); // Converte para minutos
+    return (totalTime / 60).ceil();
   }
 }

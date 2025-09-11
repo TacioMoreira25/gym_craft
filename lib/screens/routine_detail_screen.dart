@@ -23,7 +23,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   List<Workout> _workouts = [];
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
-  bool _isReorderMode = false; // Nova variável para controlar modo de reordenação
+  bool _isReorderMode = false;
 
   @override
   void initState() {
@@ -39,7 +39,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
     final stats = await _databaseService.routines.getRoutineStats(widget.routine.id!);
 
-    // Aplicar ordem salva se existir
     final orderedWorkouts = await _applyCustomOrder(workouts);
 
     setState(() {
@@ -49,21 +48,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     });
   }
 
-  // Aplicar ordem personalizada baseada no SharedPreferences
   Future<List<Workout>> _applyCustomOrder(List<Workout> workouts) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? savedOrder = prefs.getString('workout_order_${widget.routine.id}');
 
       if (savedOrder == null) {
-        // Se não há ordem salva, retorna na ordem original
         return workouts;
       }
 
       List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
       List<Workout> orderedWorkouts = [];
 
-      // Primeiro, adiciona os workouts na ordem salva
       for (int id in orderIds) {
         Workout? workout = workouts.firstWhere(
           (w) => w.id == id,
@@ -74,7 +70,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         }
       }
 
-      // Depois, adiciona qualquer workout novo que não estava na ordem salva
       for (Workout workout in workouts) {
         if (!orderedWorkouts.any((w) => w.id == workout.id)) {
           orderedWorkouts.add(workout);
@@ -83,12 +78,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
       return orderedWorkouts;
     } catch (e) {
-      // Em caso de erro, retorna na ordem original
       return workouts;
     }
   }
 
-  // Salvar ordem dos workouts no SharedPreferences
   Future<void> _saveWorkoutOrder() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -99,9 +92,28 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     }
   }
 
+  void _exitReorderMode() {
+    setState(() => _isReorderMode = false);
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_isReorderMode) {
+      _exitReorderMode();
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !_isReorderMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isReorderMode) {
+          _exitReorderMode();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_isReorderMode ? 'Reordenar Treinos' : widget.routine.name),
         leading: _isReorderMode
@@ -169,6 +181,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 ],
               ),
             ),
+      ),
     );
   }
 
@@ -514,7 +527,6 @@ Widget _buildRoutineInfo() {
           padding: EdgeInsets.all(16),
           child: Row(
             children: [
-              // Número do treino
               Container(
                 width: 40,
                 height: 40,
@@ -534,7 +546,6 @@ Widget _buildRoutineInfo() {
               ),
               SizedBox(width: 16),
 
-              // Informações do treino
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,7 +610,7 @@ Widget _buildRoutineInfo() {
                 ],
               ),
             ],
-          ),
+                      ),
         ),
       ),
     );

@@ -46,11 +46,11 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
   Future<void> _loadSeries() async {
     if (!mounted) return;
-    
+
     try {
       final workoutExerciseId = widget.workoutExerciseData['id'];
       final seriesList = await _databaseService.series.getSeriesByWorkoutExercise(workoutExerciseId);
-      
+
       if (mounted) {
         setState(() {
           _series = List.from(seriesList);
@@ -81,9 +81,9 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
     try {
       final data = widget.workoutExerciseData;
-      
+
       final notesText = _notesController.text.trim();
-      
+
       final workoutExercise = WorkoutExercise(
         id: data['id'],
         workoutId: data['workout_id'],
@@ -94,14 +94,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
       );
 
       await _databaseService.workoutExercises.updateWorkoutExercise(workoutExercise);
-      
+
       // Atualizar as séries
       await _updateSeries();
-      
+
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -117,9 +117,9 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
   Future<void> _updateSeries() async {
     final workoutExerciseId = widget.workoutExerciseData['id'];
-    
+
     await _databaseService.series.deleteSeriesByWorkoutExercise(workoutExerciseId);
-    
+
     for (int i = 0; i < _series.length; i++) {
       final series = WorkoutSeries(
         id: null,
@@ -131,14 +131,14 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         restSeconds: _series[i].restSeconds,
         notes: _series[i].notes,
       );
-      
+
       await _databaseService.series.insertSeries(series);
     }
   }
 
   void _addSeries(SeriesType type) {
     if (!mounted) return;
-    
+
     setState(() {
       _series.add(
         WorkoutSeries(
@@ -149,7 +149,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
           repetitions: type == SeriesType.valid ? 12 : null,
           weight: type == SeriesType.rest ? null : 0.0,
           restSeconds: type == SeriesType.rest ? 30 : 60,
-          notes: null, 
+          notes: null,
         ),
       );
     });
@@ -157,7 +157,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
   void _removeSeries(int index) {
     if (!mounted) return;
-    
+
     if (_series.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -175,7 +175,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
   void _updateSeriesAtIndex(int index, WorkoutSeries updatedSeries) {
     if (!mounted) return;
-    
+
     setState(() {
       _series[index] = updatedSeries;
     });
@@ -184,7 +184,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
   @override
   Widget build(BuildContext context) {
     final exerciseName = widget.workoutExerciseData['exercise_name'];
-    
+
     return Dialog(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
@@ -214,7 +214,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         exerciseName: widget.workoutExerciseData['exercise_name'] as String?,
                       ),
                       const SizedBox(width: 12),
-                      
+
                       // Textos
                       Expanded(
                         child: Column(
@@ -299,24 +299,20 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Notas do exercício
-                      TextFormField(
-                        controller: _notesController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Notas do Exercício (opcional)',
-                          hintText: 'Ex: Foco na execução, ajustar postura...',
-                          prefixIcon: Icon(Icons.notes),
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) {
-                          if (value.trim().isEmpty && value.isNotEmpty) {
-                            _notesController.clear();
-                          }
-                        },
+                      // Notas do exercício
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Notas do Exercício (opcional)',
+                        hintText: 'Ex: Foco na execução, ajustar postura...',
+                        prefixIcon: Icon(Icons.notes),
+                        border: OutlineInputBorder(),
                       ),
-                      
+                    ),
+
                       const SizedBox(height: 24),
-                      
+
                       // Cabeçalho das séries
                       Row(
                         children: [
@@ -486,9 +482,9 @@ class _SeriesCardState extends State<_SeriesCard> {
 
   void _updateSeries() {
     if (!mounted) return;
-    
+
     final notesText = _notesController.text.trim();
-    
+
     final updatedSeries = widget.series.copyWith(
       type: _selectedType,
       repetitions: _repsController.text.isEmpty
@@ -500,7 +496,7 @@ class _SeriesCardState extends State<_SeriesCard> {
       restSeconds: _restController.text.isEmpty
           ? null
           : int.tryParse(_restController.text),
-      notes: notesText.isEmpty ? null : notesText, 
+      notes: notesText.isEmpty ? null : notesText,
     );
     widget.onChanged(updatedSeries);
   }
@@ -556,7 +552,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                     if (mounted) {
                       setState(() {
                         _selectedType = newType;
-                        
+
                         if (newType == SeriesType.rest) {
                           _repsController.clear();
                           _weightController.clear();
