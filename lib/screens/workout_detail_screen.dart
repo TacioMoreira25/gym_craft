@@ -765,7 +765,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                             ),
                           ],
                         ),
-                        // Mostrar notas da série se existirem - usando validação melhorada
                         if (_isValidText(s.notes)) ...[
                           const SizedBox(height: 6),
                           Container(
@@ -806,7 +805,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
             ],
 
-            // Notas do exercício - usando validação padrão
             if (_isValidText(workoutExercise.notes)) ...[
               const SizedBox(height: 12),
               Container(

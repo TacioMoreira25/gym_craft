@@ -23,31 +23,38 @@ class WorkoutSeries {
     this.createdAt,
   });
 
-  String? _sanitizeNotes(String? input) {
-    if (input == null) return null;
+  String? _sanitizeNotesForDatabase(String? input) {
+  if (input == null) return null;
 
-    String cleaned = input
-        .replaceAll(RegExp(r'[\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'), '')
-        .trim();
+  String cleaned = input
+      .replaceAll(RegExp(r'[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]'), '')
+      .trim();
+  if (cleaned.isEmpty || cleaned.length <= 1) return null;
 
+  return cleaned;
+}
+
+  String? get sanitizedNotes {
+    if (notes == null) return null;
+
+    String cleaned = notes!.trim();
     return cleaned.isEmpty ? null : cleaned;
   }
 
-  String? get sanitizedNotes => _sanitizeNotes(notes);
-
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'workout_exercise_id': workoutExerciseId,
-      'series_number': seriesNumber,
-      'repetitions': repetitions,
-      'weight': weight,
-      'rest_seconds': restSeconds,
-      'type': type.name,
-      'notes': _sanitizeNotes(notes), // Sanitiza antes de salvar
-      'created_at': (createdAt ?? DateTime.now()).millisecondsSinceEpoch,
-    };
-  }
+  final sanitizedNotes = _sanitizeNotesForDatabase(notes);
+  return {
+    'id': id,
+    'workout_exercise_id': workoutExerciseId,
+    'series_number': seriesNumber,
+    'repetitions': repetitions,
+    'weight': weight,
+    'rest_seconds': restSeconds,
+    'type': type.name,
+    'notes': sanitizedNotes,
+    'created_at': (createdAt ?? DateTime.now()).millisecondsSinceEpoch,
+  };
+}
 
   factory WorkoutSeries.fromMap(Map<String, dynamic> map) {
     return WorkoutSeries(
@@ -67,8 +74,7 @@ class WorkoutSeries {
           : null,
     );
   }
-
-  WorkoutSeries copyWith({
+    WorkoutSeries copyWith({
     int? id,
     int? workoutExerciseId,
     int? seriesNumber,
@@ -78,6 +84,7 @@ class WorkoutSeries {
     SeriesType? type,
     String? notes,
     DateTime? createdAt,
+    bool clearNotes = false,
   }) {
     return WorkoutSeries(
       id: id ?? this.id,
@@ -87,7 +94,7 @@ class WorkoutSeries {
       weight: weight ?? this.weight,
       restSeconds: restSeconds ?? this.restSeconds,
       type: type ?? this.type,
-      notes: notes ?? this.notes,
+      notes: clearNotes ? null : (notes ?? this.notes),
       createdAt: createdAt ?? this.createdAt,
     );
   }

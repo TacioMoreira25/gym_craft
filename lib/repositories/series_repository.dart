@@ -23,7 +23,6 @@ class SeriesRepository extends BaseRepository {
   }
 
   Future<int> updateSeries(WorkoutSeries series) async {
-    // O toMap() do WorkoutSeries já trata a sanitização das notas
     return await update(series.toMap(), series.id!);
   }
 
@@ -43,23 +42,19 @@ class SeriesRepository extends BaseRepository {
   Future<void> saveWorkoutExerciseSeries(int workoutExerciseId, List<WorkoutSeries> seriesList) async {
     final db = await database;
     await db.transaction((txn) async {
-      // Remove todas as séries existentes
       await txn.delete(
         tableName,
         where: 'workout_exercise_id = ?',
         whereArgs: [workoutExerciseId],
       );
 
-      // Insere as novas séries
       for (int i = 0; i < seriesList.length; i++) {
         final series = seriesList[i];
         series.workoutExerciseId = workoutExerciseId;
-        series.seriesNumber = i + 1; // Garante numeração sequencial
+        series.seriesNumber = i + 1;
 
-        // Cria um mapa sanitizado para inserção
         final seriesMap = series.toMap();
 
-        // Remove o ID para inserção (será gerado automaticamente)
         seriesMap.remove('id');
 
         await txn.insert(tableName, seriesMap);
@@ -114,7 +109,7 @@ class SeriesRepository extends BaseRepository {
       weight: series.weight,
       restSeconds: series.restSeconds,
       type: series.type,
-      notes: series.sanitizedNotes,
+      notes: series.notes,
       createdAt: DateTime.now(),
     )).toList();
 
@@ -126,7 +121,6 @@ class SeriesRepository extends BaseRepository {
   Future<void> cleanupExistingNotes() async {
     final db = await database;
 
-    // Busca todas as séries com notas
     final List<Map<String, dynamic>> seriesWithNotes = await db.query(
       tableName,
       where: 'notes IS NOT NULL AND notes != ""',
@@ -146,14 +140,12 @@ class SeriesRepository extends BaseRepository {
     }
   }
 
-  // Método para debug - listar séries com caracteres problemáticos
   Future<List<WorkoutSeries>> getSeriesWithProblematicNotes() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(tableName);
 
     final allSeries = List.generate(maps.length, (i) => WorkoutSeries.fromMap(maps[i]));
 
-    // Filtra séries onde as notas originais diferem das sanitizadas
     return allSeries.where((series) =>
       series.notes != null &&
       series.sanitizedNotes != series.notes

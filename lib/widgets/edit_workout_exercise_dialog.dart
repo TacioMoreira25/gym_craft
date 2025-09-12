@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../utils/constants.dart';
 import '../widgets/exercise_image_widget.dart';
 import '../widgets/ImageViewerDialog.dart';
+import '../widgets/series_editor_widget.dart';
 
 class EditWorkoutExerciseDialog extends StatefulWidget {
   final Map<String, dynamic> workoutExerciseData;
@@ -20,21 +21,25 @@ class EditWorkoutExerciseDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<EditWorkoutExerciseDialog> createState() => _EditWorkoutExerciseDialogState();
+  State<EditWorkoutExerciseDialog> createState() =>
+      _EditWorkoutExerciseDialogState();
 }
 
 class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _notesController;
   final DatabaseService _databaseService = DatabaseService();
-  bool _isLoading = false;
+
+  bool _isLoading = true;
+  bool _isSaving = false;
   List<WorkoutSeries> _series = [];
 
   @override
   void initState() {
     super.initState();
-    final data = widget.workoutExerciseData;
-    _notesController = TextEditingController(text: data['notes'] ?? '');
+    _notesController = TextEditingController(
+      text: widget.workoutExerciseData['notes'] ?? '',
+    );
     _loadSeries();
   }
 
@@ -49,39 +54,42 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
     try {
       final workoutExerciseId = widget.workoutExerciseData['id'];
-      final seriesList = await _databaseService.series.getSeriesByWorkoutExercise(workoutExerciseId);
+      final seriesList = await _databaseService.series
+          .getSeriesByWorkoutExercise(workoutExerciseId);
 
       if (mounted) {
         setState(() {
           _series = List.from(seriesList);
-          if (_series.isEmpty) {
-            _series.add(WorkoutSeries(
-              id: null,
-              workoutExerciseId: workoutExerciseId,
-              seriesNumber: 1,
-              type: SeriesType.valid,
-              repetitions: 12,
-              weight: 0.0,
-              restSeconds: 60,
-              notes: null,
-            ));
-          }
+          _isLoading = false;
         });
       }
     } catch (e) {
       print('Erro ao carregar séries: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar('Erro ao carregar séries: $e');
+      }
+    }
+  }
+
+  void _onSeriesChanged(List<WorkoutSeries> updatedSeries) {
+    if (mounted && !_isSaving) {
+      setState(() {
+        _series = List.from(updatedSeries);
+      });
     }
   }
 
   Future<void> _updateWorkoutExercise() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!mounted) return;
+    if (!mounted || _isSaving) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
       final data = widget.workoutExerciseData;
-
       final notesText = _notesController.text.trim();
 
       final workoutExercise = WorkoutExercise(
@@ -89,101 +97,70 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         workoutId: data['workout_id'],
         exerciseId: data['exercise_id'],
         orderIndex: data['order_index'],
-        notes: notesText.isEmpty ? null : notesText, // CORREÇÃO: usar trim()
+        notes: notesText.isEmpty ? null : notesText,
         createdAt: DateTime.fromMillisecondsSinceEpoch(data['created_at']),
       );
 
-      await _databaseService.workoutExercises.updateWorkoutExercise(workoutExercise);
+      await _databaseService.workoutExercises.updateWorkoutExercise(
+        workoutExercise,
+      );
 
-      // Atualizar as séries
-      await _updateSeries();
+      await _updateSeriesInDatabase();
 
       if (mounted) {
+        widget.onUpdated();
         Navigator.of(context).pop();
       }
-
     } catch (e) {
+      print('Erro ao atualizar exercício: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao atualizar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Erro ao atualizar: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
       }
     }
   }
 
-  Future<void> _updateSeries() async {
+  Future<void> _updateSeriesInDatabase() async {
     final workoutExerciseId = widget.workoutExerciseData['id'];
 
-    await _databaseService.series.deleteSeriesByWorkoutExercise(workoutExerciseId);
+    // Remove todas as séries existentes
+    await _databaseService.series.deleteSeriesByWorkoutExercise(
+      workoutExerciseId,
+    );
 
+    // Insere as novas séries com numeração correta
     for (int i = 0; i < _series.length; i++) {
-      final series = WorkoutSeries(
-        id: null,
+      final s = _series[i];
+      final newSeries = s.copyWith(
+        id: null, // Reset ID para inserção
         workoutExerciseId: workoutExerciseId,
         seriesNumber: i + 1,
-        type: _series[i].type,
-        repetitions: _series[i].repetitions,
-        weight: _series[i].weight,
-        restSeconds: _series[i].restSeconds,
-        notes: _series[i].notes,
       );
-
-      await _databaseService.series.insertSeries(series);
+      await _databaseService.series.insertSeries(newSeries);
     }
   }
 
-  void _addSeries(SeriesType type) {
-    if (!mounted) return;
-
-    setState(() {
-      _series.add(
-        WorkoutSeries(
-          id: null,
-          workoutExerciseId: widget.workoutExerciseData['id'],
-          seriesNumber: _series.length + 1,
-          type: type,
-          repetitions: type == SeriesType.valid ? 12 : null,
-          weight: type == SeriesType.rest ? null : 0.0,
-          restSeconds: type == SeriesType.rest ? 30 : 60,
-          notes: null,
-        ),
-      );
-    });
-  }
-
-  void _removeSeries(int index) {
-    if (!mounted) return;
-
-    if (_series.length <= 1) {
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deve haver pelo menos uma série'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
-      return;
     }
-
-    setState(() {
-      _series.removeAt(index);
-    });
-  }
-
-  void _updateSeriesAtIndex(int index, WorkoutSeries updatedSeries) {
-    if (!mounted) return;
-
-    setState(() {
-      _series[index] = updatedSeries;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final exerciseName = widget.workoutExerciseData['exercise_name'];
+    final workoutExerciseId = widget.workoutExerciseData['id'];
 
     return Dialog(
       child: Container(
@@ -191,6 +168,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Header
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -205,7 +183,6 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                 children: [
                   Row(
                     children: [
-                      // Imagem do exercício usando ExerciseImageWidget
                       ExerciseImageWidget(
                         imageUrl: widget.workoutExerciseData['image_url'] as String?,
                         category: widget.workoutExerciseData['category'] as String?,
@@ -222,7 +199,10 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.edit, color: Theme.of(context).primaryColor),
+                                Icon(
+                                  Icons.edit,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                                 const SizedBox(width: 8),
                                 const Text(
                                   'Editar Exercício',
@@ -299,71 +279,36 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Notas do exercício
-                      // Notas do exercício
-                    TextFormField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Notas do Exercício (opcional)',
-                        hintText: 'Ex: Foco na execução, ajustar postura...',
-                        prefixIcon: Icon(Icons.notes),
-                        border: OutlineInputBorder(),
+                      TextFormField(
+                        controller: _notesController,
+                        maxLines: 3,
+                        enabled: !_isSaving,
+                        decoration: const InputDecoration(
+                          labelText: 'Notas do Exercício (opcional)',
+                          hintText: 'Ex: Foco na execução, ajustar postura...',
+                          prefixIcon: Icon(Icons.notes),
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
 
                       const SizedBox(height: 24),
 
-                      // Cabeçalho das séries
-                      Row(
-                        children: [
-                          const Icon(Icons.fitness_center, color: Colors.indigo),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Séries (${_series.length})',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                      // Series Editor
+                      if (_isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: CircularProgressIndicator(),
                           ),
-                          const Spacer(),
-                          // Botão para adicionar série
-                          PopupMenuButton<SeriesType>(
-                            icon: const Icon(Icons.add_circle, color: Colors.indigo),
-                            tooltip: 'Adicionar Série',
-                            onSelected: _addSeries,
-                            itemBuilder: (context) => SeriesType.values.map((type) {
-                              return PopupMenuItem(
-                                value: type,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      AppConstants.getSeriesTypeIcon(type),
-                                      size: 20,
-                                      color: AppConstants.getSeriesTypeColor(type),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(AppConstants.getSeriesTypeName(type)),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Lista de séries
-                      ..._series.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final series = entry.value;
-                        return _SeriesCard(
-                          key: ValueKey('series_temp_$index'),
-                          series: series,
-                          seriesNumber: index + 1,
-                          onChanged: (updatedSeries) => _updateSeriesAtIndex(index, updatedSeries),
-                          onDelete: () => _removeSeries(index),
-                          canDelete: _series.length > 1,
-                        );
-                      }).toList(),
+                        )
+                      else
+                        SeriesEditorWidget(
+                          // Chave estável baseada apenas no workoutExerciseId
+                          key: ValueKey('series_editor_$workoutExerciseId'),
+                          initialSeries: _series,
+                          workoutExerciseId: workoutExerciseId,
+                          onSeriesChanged: _onSeriesChanged,
+                        ),
                     ],
                   ),
                 ),
@@ -391,14 +336,16 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: _isLoading ? null : () {
-                      if (mounted) Navigator.of(context).pop();
-                    },
+                    onPressed: (_isLoading || _isSaving)
+                        ? null
+                        : () {
+                            if (mounted) Navigator.of(context).pop();
+                          },
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _updateWorkoutExercise,
+                    onPressed: (_isLoading || _isSaving) ? null : _updateWorkoutExercise,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
@@ -407,7 +354,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         vertical: 12,
                       ),
                     ),
-                    child: _isLoading
+                    child: _isSaving
                         ? const SizedBox(
                             width: 20,
                             height: 20,
@@ -425,311 +372,5 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
         ),
       ),
     );
-  }
-}
-
-class _SeriesCard extends StatefulWidget {
-  final WorkoutSeries series;
-  final int seriesNumber;
-  final Function(WorkoutSeries) onChanged;
-  final VoidCallback onDelete;
-  final bool canDelete;
-
-  const _SeriesCard({
-    Key? key,
-    required this.series,
-    required this.seriesNumber,
-    required this.onChanged,
-    required this.onDelete,
-    required this.canDelete,
-  }) : super(key: key);
-
-  @override
-  State<_SeriesCard> createState() => _SeriesCardState();
-}
-
-class _SeriesCardState extends State<_SeriesCard> {
-  late TextEditingController _repsController;
-  late TextEditingController _weightController;
-  late TextEditingController _restController;
-  late TextEditingController _notesController;
-  late SeriesType _selectedType;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedType = widget.series.type;
-    _repsController = TextEditingController(
-      text: widget.series.repetitions?.toString() ?? '',
-    );
-    _weightController = TextEditingController(
-      text: widget.series.weight?.toString() ?? '',
-    );
-    _restController = TextEditingController(
-      text: widget.series.restSeconds?.toString() ?? '',
-    );
-    _notesController = TextEditingController(text: widget.series.notes ?? '');
-  }
-
-  @override
-  void dispose() {
-    _repsController.dispose();
-    _weightController.dispose();
-    _restController.dispose();
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  void _updateSeries() {
-    if (!mounted) return;
-
-    final notesText = _notesController.text.trim();
-
-    final updatedSeries = widget.series.copyWith(
-      type: _selectedType,
-      repetitions: _repsController.text.isEmpty
-          ? null
-          : int.tryParse(_repsController.text),
-      weight: _weightController.text.isEmpty
-          ? null
-          : double.tryParse(_weightController.text),
-      restSeconds: _restController.text.isEmpty
-          ? null
-          : int.tryParse(_restController.text),
-      notes: notesText.isEmpty ? null : notesText,
-    );
-    widget.onChanged(updatedSeries);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cabeçalho da série
-            Row(
-              children: [
-                // Badge do tipo de série
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppConstants.getSeriesTypeColor(_selectedType),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        AppConstants.getSeriesTypeIcon(_selectedType),
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${widget.seriesNumber}ª ${AppConstants.getSeriesTypeName(_selectedType)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-
-                // Dropdown para mudar tipo
-                PopupMenuButton<SeriesType>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (newType) {
-                    if (mounted) {
-                      setState(() {
-                        _selectedType = newType;
-
-                        if (newType == SeriesType.rest) {
-                          _repsController.clear();
-                          _weightController.clear();
-                          if (_restController.text.isEmpty) {
-                            _restController.text = '30';
-                          }
-                        } else if (newType == SeriesType.warmup || newType == SeriesType.recognition) {
-                          _weightController.clear();
-                          if (_repsController.text.isEmpty) {
-                            _repsController.text = '12';
-                          }
-                        } else {
-                          if (_repsController.text.isEmpty) {
-                            _repsController.text = '12';
-                          }
-                          if (_restController.text.isEmpty) {
-                            _restController.text = '60';
-                          }
-                        }
-                      });
-                      _updateSeries();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    ...SeriesType.values
-                        .map(
-                          (type) => PopupMenuItem(
-                            value: type,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  AppConstants.getSeriesTypeIcon(type),
-                                  size: 16,
-                                  color: AppConstants.getSeriesTypeColor(type),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(AppConstants.getSeriesTypeName(type)),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    if (widget.canDelete) ...[
-                      const PopupMenuDivider(),
-                      PopupMenuItem(
-                        onTap: widget.onDelete,
-                        child: const Row(
-                          children: [
-                            Icon(Icons.delete, size: 16, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text(
-                              'Excluir',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Campos de entrada baseados no tipo de série
-            if (_shouldShowField('repetitions')) ...[
-              Row(
-                children: [
-                  // Repetições
-                  if (_shouldShowField('repetitions'))
-                    Expanded(
-                      child: TextField(
-                        controller: _repsController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'Repetições',
-                          hintText: '12',
-                          prefixIcon: Icon(Icons.repeat),
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        onChanged: (_) => _updateSeries(),
-                      ),
-                    ),
-
-                  if (_shouldShowField('repetitions') && _shouldShowField('weight'))
-                    const SizedBox(width: 12),
-
-                  // Peso
-                  if (_shouldShowField('weight'))
-                    Expanded(
-                      child: TextField(
-                        controller: _weightController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*\.?\d*'),
-                          ),
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'Peso (kg)',
-                          hintText: '20.0',
-                          prefixIcon: Icon(Icons.fitness_center),
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        onChanged: (_) => _updateSeries(),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Descanso
-            if (_shouldShowField('rest_seconds'))
-              TextField(
-                controller: _restController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: _selectedType == SeriesType.rest
-                      ? 'Tempo (segundos)'
-                      : 'Descanso (segundos)',
-                  hintText: _selectedType == SeriesType.rest ? '30' : '60',
-                  prefixIcon: const Icon(Icons.timer),
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
-                onChanged: (_) => _updateSeries(),
-              ),
-
-            if (_shouldShowField('rest_seconds')) const SizedBox(height: 12),
-
-            // Notas
-            TextField(
-              controller: _notesController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Notas (opcional)',
-                hintText: 'Ex: Aumentar peso na próxima...',
-                prefixIcon: Icon(Icons.notes),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: (value) {
-                if (value.trim().isEmpty && value.isNotEmpty) {
-                  _notesController.clear();
-                }
-                _updateSeries();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  bool _shouldShowField(String field) {
-    switch (_selectedType) {
-      case SeriesType.valid:
-      case SeriesType.dropset:
-      case SeriesType.failure:
-      case SeriesType.negativa:
-        return true; // Todos os campos
-
-      case SeriesType.warmup:
-      case SeriesType.recognition:
-        return field != 'weight'; // Sem peso
-
-      case SeriesType.rest:
-        return field == 'rest_seconds'; // Só tempo de descanso
-    }
   }
 }
