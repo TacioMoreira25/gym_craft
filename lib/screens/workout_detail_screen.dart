@@ -221,18 +221,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     setState(() => _isReorderMode = false);
   }
 
-  // Função para verificar se uma string é válida (não nula, não vazia, sem apenas espaços/caracteres especiais)
   bool _isValidText(String? text) {
     if (text == null) return false;
 
-    // Remove espaços e caracteres de controle/invisíveis
     final cleanText = text
         .replaceAll(RegExp(r'[\s\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'), '');
 
     return cleanText.isNotEmpty;
   }
 
-  // Função para formatar tempo de descanso
   String _formatRestTime(int seconds) {
     if (seconds < 60) {
       return '${seconds}s';

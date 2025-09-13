@@ -128,12 +128,10 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
   Future<void> _updateSeriesInDatabase() async {
     final workoutExerciseId = widget.workoutExerciseData['id'];
 
-    // Remove todas as séries existentes
     await _databaseService.series.deleteSeriesByWorkoutExercise(
       workoutExerciseId,
     );
 
-    // Insere as novas séries com numeração correta
     for (int i = 0; i < _series.length; i++) {
       final s = _series[i];
       final newSeries = s.copyWith(

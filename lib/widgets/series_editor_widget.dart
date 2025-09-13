@@ -1,5 +1,3 @@
-// lib/widgets/series_editor_widget.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -39,7 +37,6 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
   @override
   void didUpdateWidget(covariant SeriesEditorWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Só atualiza se a lista inicial realmente mudou
     if (widget.initialSeries != oldWidget.initialSeries) {
       setState(() {
         _series = List.from(widget.initialSeries);
@@ -127,7 +124,6 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cabeçalho para adicionar séries
         Row(
           children: [
             const Icon(Icons.fitness_center, color: Colors.indigo),
@@ -184,7 +180,6 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
           final series = _series[index];
 
           return _SeriesCard(
-            // Chave única e estável baseada apenas no índice da posição
             key: ValueKey('series_$index'),
             series: series,
             seriesNumber: index + 1,
@@ -197,9 +192,6 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
     );
   }
 }
-
-// --- WIDGET INTERNO PARA O CARD DE CADA SÉRIE ---
-
 class _SeriesCard extends StatefulWidget {
   final WorkoutSeries series;
   final int seriesNumber;
@@ -220,8 +212,7 @@ class _SeriesCard extends StatefulWidget {
   State<_SeriesCard> createState() => _SeriesCardState();
 }
 
-class _SeriesCardState extends State<_SeriesCard>
-{
+class _SeriesCardState extends State<_SeriesCard> {
   late TextEditingController _repsController;
   late TextEditingController _weightController;
   late TextEditingController _restController;
@@ -256,29 +247,21 @@ class _SeriesCardState extends State<_SeriesCard>
     _repsController.addListener(_onNumericFieldChanged);
     _weightController.addListener(_onNumericFieldChanged);
     _restController.addListener(_onNumericFieldChanged);
-    _notesController.addListener(_onNotesChanged);
   }
 
   void _removeListeners() {
     _repsController.removeListener(_onNumericFieldChanged);
     _weightController.removeListener(_onNumericFieldChanged);
     _restController.removeListener(_onNumericFieldChanged);
-    _notesController.removeListener(_onNotesChanged);
   }
 
   void _onNumericFieldChanged() {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
-        _updateSeries();
+        _updateSeriesFromNumericFields();
       }
     });
-  }
-
-  void _onNotesChanged() {
-    if (mounted) {
-      _updateSeries();
-    }
   }
 
   @override
@@ -292,7 +275,7 @@ class _SeriesCardState extends State<_SeriesCard>
     super.dispose();
   }
 
-  void _updateSeries() {
+  void _updateSeriesFromNumericFields() {
     if (!mounted) return;
 
     final updatedSeries = widget.series.copyWith(
@@ -300,9 +283,36 @@ class _SeriesCardState extends State<_SeriesCard>
       repetitions: int.tryParse(_repsController.text),
       weight: double.tryParse(_weightController.text),
       restSeconds: int.tryParse(_restController.text),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+      // Mantém as notas atuais sem alteração
+      notes: widget.series.notes,
+    );
+
+    widget.onChanged(updatedSeries);
+  }
+
+  void _updateNotes(String value) {
+    if (!mounted) return;
+
+    final updatedSeries = widget.series.copyWith(
+      type: _selectedType,
+      repetitions: widget.series.repetitions,
+      weight: widget.series.weight,
+      restSeconds: widget.series.restSeconds,
+      notes: value.isEmpty ? null : value,
+    );
+
+    widget.onChanged(updatedSeries);
+  }
+
+  void _updateSeriesType() {
+    if (!mounted) return;
+
+    final updatedSeries = widget.series.copyWith(
+      type: _selectedType,
+      repetitions: int.tryParse(_repsController.text),
+      weight: double.tryParse(_weightController.text),
+      restSeconds: int.tryParse(_restController.text),
+      notes: _notesController.text.isEmpty ? null : _notesController.text,
     );
 
     widget.onChanged(updatedSeries);
@@ -380,7 +390,7 @@ class _SeriesCardState extends State<_SeriesCard>
                       setState(() {
                         _selectedType = newType;
                       });
-                      _updateSeries();
+                      _updateSeriesType();
                     }
                   },
                   itemBuilder: (context) => [
@@ -492,6 +502,7 @@ class _SeriesCardState extends State<_SeriesCard>
             TextField(
               controller: _notesController,
               maxLines: 2,
+              onChanged: (value) => _updateNotes(value), // AQUI ESTÁ O MÉTODO!
               decoration: const InputDecoration(
                 labelText: 'Notas (opcional)',
                 hintText: 'Ex: Aumentar peso na próxima...',
