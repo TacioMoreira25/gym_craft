@@ -49,10 +49,9 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             exercise.name.toLowerCase().contains(
               _searchController.text.toLowerCase(),
             ) ||
-            (exercise.description?.toLowerCase().contains
-            (
-            _searchController.text.toLowerCase(),
-            ) ?? false); 
+            (exercise.description?.toLowerCase().contains(
+              _searchController.text.toLowerCase(),
+            ) ?? false);
 
         final matchesCategoty =
             _selectedCategory == 'Todos' ||
@@ -318,8 +317,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
   }
 
   Widget _buildExerciseCard(Exercise exercise) {
-    final color =
-        AppConstants.categoryColors[exercise.category] ?? Colors.grey;
+    final color = AppConstants.categoryColors[exercise.category] ?? Colors.grey;
 
     return Card(
       margin: EdgeInsets.only(bottom: 12),
@@ -333,7 +331,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Icon(
-            _getCategoryIcon(exercise.category),
+            AppConstants.getMuscleGroupIcon(exercise.category),
             color: color,
             size: 24,
           ),
@@ -390,7 +388,7 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
             ),
           ],
         ),
-        // ✅ ADICIONANDO O TRAILING COM BOTÕES DE EDIÇÃO
+        // CORRIGIDO: ADICIONANDO O TRAILING COM BOTÕES DE EDIÇÃO
         trailing: exercise.isCustom
             ? PopupMenuButton<String>(
                 onSelected: (value) {
@@ -469,12 +467,10 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                           ),
                         ],
                       ),
-                      if (exercise.description?.isNotEmpty == true) ...
-                      [
+                      if (exercise.description?.isNotEmpty == true) ...[
                         SizedBox(height: 4),
-                        Text
-                        (
-                          exercise.description!, 
+                        Text(
+                          exercise.description!,
                           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                         ),
                       ],
@@ -607,21 +603,14 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
     final db = await DatabaseHelper().database;
     final result = await db.rawQuery(
       '''
-      SELECT COUNT(DISTINCT workout_id) as count 
-      FROM workout_exercises 
+      SELECT COUNT(DISTINCT workout_id) as count
+      FROM workout_exercises
       WHERE exercise_id = ?
     ''',
       [exerciseId],
     );
 
     return Sqflite.firstIntValue(result) ?? 0;
-  }
-
-  IconData _getCategoryIcon(String category) {
-    if (category == 'Todos') {
-      return Icons.list;
-    }
-    return AppConstants.getMuscleGroupIcon(category);
   }
 
   String _formatDate(DateTime date) {

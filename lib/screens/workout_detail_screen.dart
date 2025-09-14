@@ -43,7 +43,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       final exercises = await _databaseService.workoutExercises
           .getWorkoutExercisesWithDetails(widget.workout.id!);
 
-      // Aplicar ordem salva se existir
       final orderedExercises = await _applyCustomOrder(exercises);
 
       if (mounted) {
@@ -406,7 +405,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   ) {
     final exercise = workoutExercise.exercise;
     final muscleGroupColor =
-        AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
+        AppConstants.getMuscleGroupColor(exercise?.category ?? 'Cardio');
 
     return Card(
       key: ValueKey(workoutExercise.id),
@@ -564,7 +563,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final exercise = workoutExercise.exercise;
     final series = workoutExercise.series;
     final muscleGroupColor =
-        AppConstants.categoryColors[exercise?.category] ?? Colors.grey;
+        AppConstants.getMuscleGroupColor(exercise?.category ?? 'Cardio');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

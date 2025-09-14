@@ -502,7 +502,7 @@ class _SeriesCardState extends State<_SeriesCard> {
             TextField(
               controller: _notesController,
               maxLines: 2,
-              onChanged: (value) => _updateNotes(value), // AQUI ESTÁ O MÉTODO!
+              onChanged: (value) => _updateNotes(value),
               decoration: const InputDecoration(
                 labelText: 'Notas (opcional)',
                 hintText: 'Ex: Aumentar peso na próxima...',
