@@ -5,6 +5,8 @@ import '../models/workout_exercise.dart';
 import '../models/workout_series.dart';
 import '../models/series_type.dart';
 import '../services/database_service.dart';
+import '../widgets/exercise_image_widget.dart';
+import '../widgets/series_editor_widget.dart';
 
 class AddWorkoutExerciseDialog extends StatefulWidget {
   final int workoutId;
@@ -29,24 +31,33 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   final DatabaseService _databaseService = DatabaseService();
 
   bool _isLoading = false;
-  List<SeriesData> _seriesList = [
-    SeriesData(
+  List<WorkoutSeries> _series = [
+    WorkoutSeries(
+      workoutExerciseId: 0, // Temporário
+      seriesNumber: 1,
       repetitions: 12,
       weight: 0.0,
       restSeconds: 60,
       type: SeriesType.valid,
+      createdAt: DateTime.now(),
     ),
-    SeriesData(
+    WorkoutSeries(
+      workoutExerciseId: 0, // Temporário
+      seriesNumber: 2,
       repetitions: 12,
       weight: 0.0,
       restSeconds: 60,
       type: SeriesType.valid,
+      createdAt: DateTime.now(),
     ),
-    SeriesData(
+    WorkoutSeries(
+      workoutExerciseId: 0, // Temporário
+      seriesNumber: 3,
       repetitions: 12,
       weight: 0.0,
       restSeconds: 60,
       type: SeriesType.valid,
+      createdAt: DateTime.now(),
     ),
   ];
 
@@ -56,24 +67,10 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
     super.dispose();
   }
 
-  void _addSeries() {
-    setState(() {
-      final lastSeries = _seriesList.isNotEmpty ? _seriesList.last : null;
-      _seriesList.add(
-        SeriesData(
-          repetitions: lastSeries?.repetitions ?? 12,
-          weight: lastSeries?.weight ?? 0.0,
-          restSeconds: lastSeries?.restSeconds ?? 60,
-          type: SeriesType.valid,
-        ),
-      );
-    });
-  }
-
-  void _removeSeries(int index) {
-    if (_seriesList.length > 1) {
+  void _onSeriesChanged(List<WorkoutSeries> updatedSeries) {
+    if (mounted && !_isLoading) {
       setState(() {
-        _seriesList.removeAt(index);
+        _series = List.from(updatedSeries);
       });
     }
   }
@@ -101,17 +98,12 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
           .insertWorkoutExercise(workoutExercise);
 
       List<WorkoutSeries> seriesList = [];
-      for (int i = 0; i < _seriesList.length; i++) {
-        final seriesData = _seriesList[i];
-        final series = WorkoutSeries(
+      for (int i = 0; i < _series.length; i++) {
+        final s = _series[i];
+        final series = s.copyWith(
+          id: null, // Reset ID para inserção
           workoutExerciseId: workoutExerciseId,
           seriesNumber: i + 1,
-          repetitions: seriesData.repetitions,
-          weight: seriesData.weight,
-          restSeconds: seriesData.restSeconds,
-          type: seriesData.type,
-          notes: seriesData.notes,
-          createdAt: DateTime.now(),
         );
         seriesList.add(series);
       }
@@ -181,225 +173,43 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outlined, color: theme.colorScheme.primary, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.selectedExercise.category,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                    fontSize: 14,
-                  ),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outlined,
+                color: theme.colorScheme.primary,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.selectedExercise.category,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                  fontSize: 14,
                 ),
-                if (widget.selectedExercise.description?.isNotEmpty ==
-                    true) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.selectedExercise.description!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.2,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSeriesCard(int index) {
-    final seriesData = _seriesList[index];
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            // Cabeçalho da série
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.blue[600],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${index + 1}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                const Expanded(
-                  child: Text(
-                    'Série',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                ),
-
-                // Botão remover
-                if (_seriesList.length > 1)
-                  IconButton(
-                    onPressed: () => _removeSeries(index),
-                    icon: Icon(Icons.remove_circle, color: Colors.red[600]),
-                    constraints: const BoxConstraints(),
-                    padding: EdgeInsets.zero,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Campos da série
-            Column(
-              children: [
-                Row(
-                  children: [
-                    // Repetições
-                    Expanded(
-                      child: TextFormField(
-                        initialValue:
-                            seriesData.repetitions?.toString() ?? '12',
-                        decoration: InputDecoration(
-                          labelText: 'Repetições',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          prefixIcon: const Icon(Icons.repeat, size: 20),
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty)
-                            return 'Obrigatório';
-                          final reps = int.tryParse(value);
-                          if (reps == null || reps <= 0) return 'Deve ser > 0';
-                          if (reps > 999) return 'Máximo 999';
-                          return null;
-                        },
-                        onChanged: (value) {
-                          final reps = int.tryParse(value) ?? 12;
-                          setState(() {
-                            _seriesList[index].repetitions = reps;
-                          });
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Peso
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: seriesData.weight?.toString() ?? '0',
-                        decoration: InputDecoration(
-                          labelText: 'Peso (kg)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.fitness_center,
-                            size: 20,
-                          ),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*\.?\d*'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final weight = double.tryParse(value);
-                            if (weight == null) return 'Inválido';
-                            if (weight > 9999) return 'Máximo 9999kg';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          final weight = double.tryParse(value) ?? 0.0;
-                          setState(() {
-                            _seriesList[index].weight = weight;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Tempo de descanso individual
-                TextFormField(
-                  initialValue: seriesData.restSeconds?.toString() ?? '60',
-                  decoration: InputDecoration(
-                    labelText: 'Descanso (segundos)',
-                    hintText: 'Ex: 60, 90, 120...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    prefixIcon: const Icon(Icons.timer, size: 20),
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      final rest = int.tryParse(value);
-                      if (rest == null || rest < 0) return 'Deve ser ≥ 0';
-                      if (rest > 3600) return 'Máximo 3600s (1h)';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    final rest = int.tryParse(value) ?? 60;
-                    setState(() {
-                      _seriesList[index].restSeconds = rest;
-                    });
-                  },
-                ),
-              ],
+          if (widget.selectedExercise.description?.isNotEmpty == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.selectedExercise.description!,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.2,
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -408,152 +218,164 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.add_circle_outlined,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Configurar Exercício',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
+    return Dialog(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.selectedExercise.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildInfoCard(),
-                const SizedBox(height: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ExerciseImageWidget(
+                        imageUrl: widget.selectedExercise.imageUrl,
+                        category: widget.selectedExercise.category,
+                        width: 50,
+                        height: 50,
+                        borderRadius: BorderRadius.circular(10),
+                        enableTap: false,
+                        exerciseName: widget.selectedExercise.name,
+                      ),
+                      const SizedBox(width: 12),
 
-                // Título das séries
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Séries (${_seriesList.length})',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      // Textos
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Configurar Exercício',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.selectedExercise.name,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInfoCard(),
+                      const SizedBox(height: 16),
+
+                      // Notas do exercício
+                      TextFormField(
+                        controller: _notesController,
+                        maxLines: 3,
+                        enabled: !_isLoading,
+                        decoration: const InputDecoration(
+                          labelText: 'Notas do Exercício (opcional)',
+                          hintText: 'Ex: Foco na execução, ajustar postura...',
+                          prefixIcon: Icon(Icons.notes),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Series Editor
+                      SeriesEditorWidget(
+                        key: const ValueKey('add_series_editor'),
+                        initialSeries: _series,
+                        workoutExerciseId: 0, // Temporário para adição
+                        onSeriesChanged: _onSeriesChanged,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Actions
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    offset: const Offset(0, -1),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _addExerciseToWorkout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
                     ),
-                    TextButton.icon(
-                      onPressed: _seriesList.length < 10 ? _addSeries : null,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Adicionar'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue[600],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Lista de séries
-                ...List.generate(
-                  _seriesList.length,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _buildSeriesCard(index),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text('Salvar'),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Observações
-                TextFormField(
-                  controller: _notesController,
-                  decoration: InputDecoration(
-                    labelText: 'Observações (opcional)',
-                    hintText: 'Ex: Foco na forma, técnica específica...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    prefixIcon: Icon(Icons.note, color: Colors.blue[600]),
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                  ),
-                  maxLines: 2,
-                  maxLength: 500,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: Text(
-            'Cancelar',
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _addExerciseToWorkout,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: theme.colorScheme.onPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: _isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.onPrimary,
-                  ),
-                )
-              : const Text('Adicionar ao Treino'),
-        ),
-      ],
     );
   }
-}
-
-// Classe auxiliar para gerenciar dados das séries
-class SeriesData {
-  int? repetitions;
-  double? weight;
-  int? restSeconds;
-  SeriesType type;
-  String? notes;
-
-  SeriesData({
-    this.repetitions,
-    this.weight,
-    this.restSeconds,
-    this.type = SeriesType.valid,
-    this.notes,
-  });
 }

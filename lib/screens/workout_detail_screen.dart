@@ -10,6 +10,7 @@ import '../models/series_type.dart';
 import '../screens/select_exercise_screen.dart';
 import '../widgets/add_workout_exercise_dialog.dart';
 import '../utils/constants.dart';
+import '../utils/snackbar_utils.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
 
@@ -67,7 +68,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showSnackBar('Erro ao carregar exercícios: $e', isError: true);
+        SnackBarUtils.showOperationError(
+          context,
+          'carregar exercícios',
+          e.toString(),
+        );
       }
     }
   }
@@ -120,18 +125,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     } catch (e) {
       print('Erro ao salvar ordem dos exercícios: $e');
     }
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red[600] : Colors.green[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
   }
 
   Future<void> _addExercise() async {
@@ -196,7 +189,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
 
     if (mounted) {
       await _loadWorkoutExercises();
-      _showSnackBar('Exercício atualizado com sucesso!');
+      SnackBarUtils.showSuccess(context, 'Exercício atualizado com sucesso!');
     }
   }
 
@@ -238,7 +231,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                 );
                 if (mounted) {
                   _loadWorkoutExercises();
-                  _showSnackBar('Exercício removido do treino!', isError: true);
+                  SnackBarUtils.showSuccess(
+                    context,
+                    'Exercício removido do treino!',
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -352,7 +348,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
             onPressed: () async {
               await _saveExerciseOrder();
               _exitReorderMode();
-              _showSnackBar('Ordem salva');
+              SnackBarUtils.showSuccess(context, 'Ordem salva');
             },
             icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Salvar',
@@ -447,64 +443,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
 
   Widget _buildReorderableList(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Arraste os exercícios para reordená-los',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ReorderableListView.builder(
-              itemCount: _workoutExercises.length,
-              onReorder: (int oldIndex, int newIndex) {
-                setState(() {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final WorkoutExercise item = _workoutExercises.removeAt(
-                    oldIndex,
-                  );
-                  _workoutExercises.insert(newIndex, item);
-                });
-              },
-              itemBuilder: (context, index) {
-                final workoutExercise = _workoutExercises[index];
-                return _buildReorderableExerciseCard(
-                  workoutExercise,
-                  index,
-                  theme,
-                  false,
-                );
-              },
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ReorderableListView.builder(
+        itemCount: _workoutExercises.length,
+        onReorder: (int oldIndex, int newIndex) {
+          setState(() {
+            if (oldIndex < newIndex) {
+              newIndex -= 1;
+            }
+            final WorkoutExercise item = _workoutExercises.removeAt(oldIndex);
+            _workoutExercises.insert(newIndex, item);
+          });
+        },
+        itemBuilder: (context, index) {
+          final workoutExercise = _workoutExercises[index];
+          return _buildReorderableExerciseCard(
+            workoutExercise,
+            index,
+            theme,
+            false,
+          );
+        },
       ),
     );
   }
@@ -827,22 +786,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
         children: [
           const SizedBox(height: 12),
 
-          // Botão para editar o exercício
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _editWorkoutExercise(workoutExercise),
-                icon: Icon(Icons.edit, size: 18),
-                label: Text('Editar Exercício'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-              ),
-            ),
-          ),
-
           if (series.isNotEmpty) ...[
             Text(
               'Séries (${series.length})',
@@ -983,65 +926,117 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     bool isDark,
   ) {
     final exercise = workoutExercise.exercise;
+    final muscleGroupColor = AppConstants.getMuscleGroupColor(
+      exercise?.category ?? 'Cardio',
+    );
 
     return Container(
       key: ValueKey(workoutExercise.id),
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 0,
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.colorScheme.outline.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(
+                Icons.drag_handle,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            exercise?.name ?? 'Exercício',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: muscleGroupColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            exercise?.category ?? '',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: muscleGroupColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (workoutExercise.series.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${workoutExercise.series.length} série${workoutExercise.series.length != 1 ? 's' : ''}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.fitness_center_outlined,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Exercício',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  exercise?.name ?? 'Exercício',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                if ((exercise?.category ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    exercise?.category ?? '',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -52,34 +52,6 @@ class AppConstants {
     'Panturrilhas': Color(0xFF64748B), // Slate-500
     'Cardio': Color(0xFFF59E0B), // Amber-500
   };
-  static const Map<String, Color> categoryColorsDark = {
-    'Peito': Color(0xFFF87171), // Red-400
-    'Costas': Color(0xFF60A5FA), // Blue-400
-    'Quadríceps': Color(0xFF34D399), // Emerald-400
-    'Posterior': Color(0xFF10B981), // Emerald-500
-    'Glúteos': Color(0xFFF472B6), // Pink-400
-    'Ombros': Color(0xFFFB923C), // Orange-400
-    'Bíceps': Color(0xFFA78BFA), // Violet-400
-    'Tríceps': Color(0xFF818CF8), // Indigo-400
-    'Abdomen': Color(0xFF22D3EE), // Cyan-400
-    'Antebraços': Color(0xFFA3E635), // Lime-400
-    'Panturrilhas': Color(0xFF94A3B8), // Slate-400
-    'Cardio': Color(0xFFFBBF24), // Amber-400
-  };
-  static const Map<String, IconData> muscleGroupIcons = {
-    'Peito': Icons.fitness_center,
-    'Costas': Icons.back_hand,
-    'Quadríceps': Icons.accessibility_new,
-    'Posterior': Icons.sports_gymnastics,
-    'Glúteos': Icons.self_improvement,
-    'Ombros': Icons.sports_martial_arts,
-    'Bíceps': Icons.sports_kabaddi,
-    'Tríceps': Icons.gesture,
-    'Abdomen': Icons.fitbit,
-    'Antebraços': Icons.pan_tool,
-    'Panturrilhas': Icons.directions_walk,
-    'Cardio': Icons.favorite,
-  };
   static const Map<SeriesType, Color> seriesTypeColors = {
     SeriesType.valid: Color(0xFF10B981), // Emerald-500
     SeriesType.warmup: Color(0xFFF97316), // Orange-500
@@ -106,6 +78,21 @@ class AppConstants {
     SeriesType.failure: Icons.flash_on_rounded,
     SeriesType.rest: Icons.pause_circle_rounded,
     SeriesType.negativa: Icons.trending_up_rounded,
+  };
+
+  static const Map<String, IconData> muscleGroupIcons = {
+    'Peito': Icons.accessibility_new_rounded,
+    'Costas': Icons.accessibility_rounded,
+    'Quadríceps': Icons.directions_run_rounded,
+    'Posterior': Icons.directions_walk_rounded,
+    'Glúteos': Icons.fitness_center_rounded,
+    'Panturrilhas': Icons.directions_run_rounded,
+    'Ombros': Icons.accessibility_new_rounded,
+    'Bíceps': Icons.fitness_center_rounded,
+    'Tríceps': Icons.fitness_center_rounded,
+    'Abdomen': Icons.accessibility_rounded,
+    'Cardio': Icons.favorite_rounded,
+    'Antebraços': Icons.pan_tool_rounded,
   };
   static const Map<SeriesType, String> seriesTypeNames = {
     SeriesType.valid: 'Válida',
@@ -134,14 +121,8 @@ class AppConstants {
     SeriesType.rest: Color(0xFF334155), // Slate-700
     SeriesType.negativa: Color(0xFF312E81), // Indigo-800
   };
-  static IconData getMuscleGroupIcon(String muscleGroup) {
-    return muscleGroupIcons[muscleGroup] ?? Icons.fitness_center;
-  }
 
   static Color getMuscleGroupColor(String muscleGroup, {bool isDark = false}) {
-    if (isDark) {
-      return categoryColorsDark[muscleGroup] ?? categoryColorsDark['Cardio']!;
-    }
     return categoryColors[muscleGroup] ?? categoryColors['Cardio']!;
   }
 
@@ -169,6 +150,10 @@ class AppConstants {
     return seriesTypeIcons[type] ?? Icons.help_rounded;
   }
 
+  static IconData getMuscleGroupIcon(String muscleGroup) {
+    return muscleGroupIcons[muscleGroup] ?? Icons.fitness_center_rounded;
+  }
+
   static String getSeriesTypeName(SeriesType type) {
     return seriesTypeNames[type] ?? 'Desconhecido';
   }
@@ -186,29 +171,6 @@ class AppConstants {
       case SeriesType.rest:
         return field == 'rest';
     }
-  }
-
-  static Map<String, Map<String, dynamic>> getStatusConfigs(bool isDark) {
-    return {
-      'active': {
-        'color': isDark
-            ? const Color(0xFF34D399)
-            : const Color(0xFF10B981), // Emerald
-        'backgroundColor': isDark
-            ? const Color(0xFF064E3B)
-            : const Color(0xFFD1FAE5),
-        'text': 'ATIVA',
-      },
-      'inactive': {
-        'color': isDark
-            ? const Color(0xFF94A3B8)
-            : const Color(0xFF64748B), // Slate
-        'backgroundColor': isDark
-            ? const Color(0xFF334155)
-            : const Color(0xFFF1F5F9),
-        'text': 'INATIVA',
-      },
-    };
   }
 
   static List<BoxShadow> getCardShadow(bool isDark) {

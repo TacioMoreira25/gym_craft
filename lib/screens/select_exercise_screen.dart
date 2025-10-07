@@ -4,6 +4,8 @@ import 'exercise_management_screen.dart';
 import '../models/exercise.dart';
 import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../mixins/filter_mixin.dart';
+import '../utils/snackbar_utils.dart';
 
 class SelectExerciseScreen extends StatefulWidget {
   final List<int> excludeExerciseIds;
@@ -15,7 +17,8 @@ class SelectExerciseScreen extends StatefulWidget {
   State<SelectExerciseScreen> createState() => _SelectExerciseScreenState();
 }
 
-class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
+class _SelectExerciseScreenState extends State<SelectExerciseScreen>
+    with FilterMixin {
   final DatabaseService _databaseService = DatabaseService();
 
   List<Exercise> _exercises = [];
@@ -25,19 +28,29 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
+  // Implementação do FilterMixin
+  @override
+  List<Exercise> get allExercises => _exercises;
+
+  @override
+  List<Exercise> get filteredExercises => _filteredExercises;
+
+  @override
+  String get selectedCategory => _selectedCategory;
+
+  @override
+  TextEditingController get searchController => _searchController;
+
+  @override
+  set filteredExercises(List<Exercise> value) => _filteredExercises = value;
+
+  @override
+  set selectedCategory(String value) => _selectedCategory = value;
+
   @override
   void initState() {
     super.initState();
     _loadExercises();
-  }
-
-  final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
-
-  IconData _getCategoryIcon(String category) {
-    if (category == 'Todos') {
-      return Icons.list;
-    }
-    return AppConstants.getMuscleGroupIcon(category);
   }
 
   Color _getCategoryColor(String category) {
@@ -88,7 +101,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
                   prefixIcon: Icon(Icons.search),
                   border: OutlineInputBorder(),
                 ),
-                onChanged: (_) => _filterExercises(),
+                onChanged: (_) => applyFilters(),
               ),
               const SizedBox(height: 12),
 
@@ -97,27 +110,20 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
                 height: 40,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
+                  itemCount: categories.length,
                   itemBuilder: (context, index) {
-                    final category = _categories[index];
+                    final category = categories[index];
                     final isSelected = category == _selectedCategory;
 
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        avatar: Icon(
-                          _getCategoryIcon(category),
-                          size: 18,
-                          color: isSelected
-                              ? _getCategoryColor(category)
-                              : Colors.grey[600],
-                        ),
                         label: Text(category),
                         selected: isSelected,
                         onSelected: (selected) {
                           setState(() {
                             _selectedCategory = category;
-                            _filterExercises();
+                            applyFilters();
                           });
                         },
                         selectedColor: _getCategoryColor(
@@ -249,46 +255,18 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
       final exercises = await _databaseService.exercises.getAllExercises();
       setState(() {
         _exercises = exercises;
-        _filterExercises();
+        applyFilters(); // Usando método do FilterMixin
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao carregar exercícios: $e'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showOperationError(
+          context,
+          'carregar exercícios',
+          e.toString(),
         );
       }
     }
-  }
-
-  void _filterExercises() {
-    List<Exercise> filtered = _exercises;
-
-    // Filtrar por categoria
-    if (_selectedCategory != 'Todos') {
-      filtered = filtered
-          .where((e) => e.category == _selectedCategory)
-          .toList();
-    }
-
-    // Filtrar por busca
-    final searchQuery = _searchController.text.toLowerCase();
-    if (searchQuery.isNotEmpty) {
-      filtered = filtered
-          .where(
-            (e) =>
-                e.name.toLowerCase().contains(searchQuery) ||
-                (e.description?.toLowerCase().contains(searchQuery) ?? false),
-          )
-          .toList();
-    }
-
-    setState(() {
-      _filteredExercises = filtered;
-    });
   }
 }

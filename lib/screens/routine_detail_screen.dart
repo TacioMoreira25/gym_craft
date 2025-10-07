@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
+import '../utils/snackbar_utils.dart';
 import 'create_workout_screen.dart';
 import 'workout_detail_screen.dart';
 import '../widgets/edit_workout_dialog.dart';
@@ -65,7 +66,11 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showSnackBar('Erro ao carregar dados: $e', isError: true);
+        SnackBarUtils.showOperationError(
+          context,
+          'carregar dados',
+          e.toString(),
+        );
       }
     }
   }
@@ -117,18 +122,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   }
 
   void _exitReorderMode() => setState(() => _isReorderMode = false);
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red[600] : Colors.green[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +188,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
             onPressed: () async {
               await _saveWorkoutOrder();
               _exitReorderMode();
-              _showSnackBar('Ordem salva');
+              SnackBarUtils.showSuccess(context, 'Ordem salva');
             },
             icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Salvar',
@@ -271,55 +264,20 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
 
   Widget _buildReorderableList(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Arraste os itens para reordenar',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ReorderableListView.builder(
-              itemCount: _workouts.length,
-              onReorder: (int oldIndex, int newIndex) {
-                setState(() {
-                  if (newIndex > oldIndex) newIndex -= 1;
-                  final item = _workouts.removeAt(oldIndex);
-                  _workouts.insert(newIndex, item);
-                });
-              },
-              itemBuilder: (context, index) {
-                final workout = _workouts[index];
-                return _buildReorderableWorkoutCard(workout, index, theme);
-              },
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ReorderableListView.builder(
+        itemCount: _workouts.length,
+        onReorder: (int oldIndex, int newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) newIndex -= 1;
+            final item = _workouts.removeAt(oldIndex);
+            _workouts.insert(newIndex, item);
+          });
+        },
+        itemBuilder: (context, index) {
+          final workout = _workouts[index];
+          return _buildReorderableWorkoutCard(workout, index, theme);
+        },
       ),
     );
   }
@@ -331,64 +289,89 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   ) {
     return Container(
       key: ValueKey(workout.id),
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 0,
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.colorScheme.outline.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(
+                Icons.drag_handle,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      workout.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    if (workout.description?.isNotEmpty == true) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        workout.description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.fitness_center_outlined,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Treino',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  workout.name,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                if (workout.description?.isNotEmpty == true) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    workout.description!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -637,7 +620,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               Navigator.of(context).pop();
               await _databaseService.workouts.deleteWorkout(workout.id!);
               _loadData();
-              _showSnackBar('Treino excluído', isError: true);
+              SnackBarUtils.showSuccess(context, 'Treino excluído');
             },
             child: const Text('Excluir'),
           ),

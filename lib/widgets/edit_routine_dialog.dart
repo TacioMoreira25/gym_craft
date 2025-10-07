@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
 import '../services/database_service.dart';
+import '../utils/validation_utils.dart';
+import '../utils/snackbar_utils.dart';
 
 class EditRoutineDialog extends StatefulWidget {
   final Routine routine;
@@ -60,20 +62,14 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Rotina atualizada com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarUtils.showSuccess(context, 'Rotina atualizada com sucesso!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao atualizar rotina: $e'),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showOperationError(
+          context,
+          'atualizar rotina',
+          e.toString(),
         );
       }
     } finally {
@@ -115,15 +111,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.bookmark),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nome é obrigatório';
-                  }
-                  if (value.trim().length < 3) {
-                    return 'Nome deve ter pelo menos 3 caracteres';
-                  }
-                  return null;
-                },
+                validator: ValidationUtils.validateRoutineName,
               ),
               const SizedBox(height: 16),
 
@@ -136,9 +124,6 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                   prefixIcon: Icon(Icons.description),
                 ),
                 maxLines: 3,
-                validator: (value) {
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
 

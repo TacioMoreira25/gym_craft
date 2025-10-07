@@ -3,6 +3,8 @@ import '../models/exercise.dart';
 import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
 import '../utils/constants.dart';
+import '../utils/validation_utils.dart';
+import '../utils/snackbar_utils.dart';
 
 class EditExerciseDialog extends StatefulWidget {
   final Exercise? exercise;
@@ -60,12 +62,6 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     super.dispose();
   }
 
-  bool _isValidUrl(String url) {
-    if (url.isEmpty) return true;
-    return Uri.tryParse(url) != null &&
-        (url.startsWith('http://') || url.startsWith('https://'));
-  }
-
   Future<void> _saveExercise() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -100,26 +96,19 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditing
-                  ? 'Exercício atualizado com sucesso!'
-                  : 'Exercício criado com sucesso!',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        SnackBarUtils.showSuccess(
+          context,
+          _isEditing
+              ? 'Exercício atualizado com sucesso!'
+              : 'Exercício criado com sucesso!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erro ao ${_isEditing ? 'atualizar' : 'criar'} exercício: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showOperationError(
+          context,
+          '${_isEditing ? 'atualizar' : 'criar'} exercício',
+          e.toString(),
         );
       }
     } finally {
@@ -167,15 +156,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.fitness_center),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nome é obrigatório';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Nome deve ter pelo menos 2 caracteres';
-                    }
-                    return null;
-                  },
+                  validator: ValidationUtils.validateExerciseName,
                 ),
                 const SizedBox(height: 16),
 
@@ -191,11 +172,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                     return DropdownMenuItem(
                       value: category,
                       child: Row(
-                        children: [
-                          Icon(_getCategoryIcon(category), size: 20),
-                          const SizedBox(width: 8),
-                          Text(category),
-                        ],
+                        children: [const SizedBox(width: 8), Text(category)],
                       ),
                     );
                   }).toList(),
@@ -216,14 +193,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                     prefixIcon: Icon(Icons.image),
                     hintText: 'https://exemplo.com/imagem.jpg',
                   ),
-                  validator: (value) {
-                    if (value != null &&
-                        value.isNotEmpty &&
-                        !_isValidUrl(value)) {
-                      return 'Por favor, informe uma URL válida';
-                    }
-                    return null;
-                  },
+                  validator: ValidationUtils.validateImageUrl,
                   onChanged: (value) {
                     setState(() {}); // Atualizar preview
                   },
@@ -327,12 +297,5 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
         ),
       ],
     );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    if (category == 'Todos') {
-      return Icons.list;
-    }
-    return AppConstants.getMuscleGroupIcon(category);
   }
 }

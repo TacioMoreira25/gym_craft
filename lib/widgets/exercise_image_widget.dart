@@ -23,10 +23,6 @@ class ExerciseImageWidget extends StatelessWidget {
     this.exerciseName, // Nome do exercício para o dialog
   });
 
-  IconData _getCategoryIcon(String? category) {
-    return AppConstants.getMuscleGroupIcon(category ?? '');
-  }
-
   Color _getCategoryColor(String? category) {
     return AppConstants.getMuscleGroupColor(category ?? '');
   }
@@ -42,11 +38,6 @@ class ExerciseImageWidget extends StatelessWidget {
           color: _getCategoryColor(category).withOpacity(0.3),
           width: 1,
         ),
-      ),
-      child: Icon(
-        _getCategoryIcon(category),
-        size: width * 0.4,
-        color: _getCategoryColor(category),
       ),
     );
   }
