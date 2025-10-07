@@ -1,4 +1,4 @@
-# Gym Craft 🏋️‍♂️
+# Gym Craft
 
 App Android feito em **Flutter** para montar e organizar treinos de academia.
 
