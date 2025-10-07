@@ -19,7 +19,8 @@ class AddWorkoutExerciseDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<AddWorkoutExerciseDialog> createState() => _AddWorkoutExerciseDialogState();
+  State<AddWorkoutExerciseDialog> createState() =>
+      _AddWorkoutExerciseDialogState();
 }
 
 class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
@@ -29,9 +30,24 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
 
   bool _isLoading = false;
   List<SeriesData> _seriesList = [
-    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
-    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
-    SeriesData(repetitions: 12, weight: 0.0, restSeconds: 60, type: SeriesType.valid),
+    SeriesData(
+      repetitions: 12,
+      weight: 0.0,
+      restSeconds: 60,
+      type: SeriesType.valid,
+    ),
+    SeriesData(
+      repetitions: 12,
+      weight: 0.0,
+      restSeconds: 60,
+      type: SeriesType.valid,
+    ),
+    SeriesData(
+      repetitions: 12,
+      weight: 0.0,
+      restSeconds: 60,
+      type: SeriesType.valid,
+    ),
   ];
 
   @override
@@ -43,12 +59,14 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   void _addSeries() {
     setState(() {
       final lastSeries = _seriesList.isNotEmpty ? _seriesList.last : null;
-      _seriesList.add(SeriesData(
-        repetitions: lastSeries?.repetitions ?? 12,
-        weight: lastSeries?.weight ?? 0.0,
-        restSeconds: lastSeries?.restSeconds ?? 60,
-        type: SeriesType.valid,
-      ));
+      _seriesList.add(
+        SeriesData(
+          repetitions: lastSeries?.repetitions ?? 12,
+          weight: lastSeries?.weight ?? 0.0,
+          restSeconds: lastSeries?.restSeconds ?? 60,
+          type: SeriesType.valid,
+        ),
+      );
     });
   }
 
@@ -66,17 +84,21 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final nextOrder = await _databaseService.workoutExercises.getNextWorkoutExerciseOrder(widget.workoutId);
+      final nextOrder = await _databaseService.workoutExercises
+          .getNextWorkoutExerciseOrder(widget.workoutId);
 
       final workoutExercise = WorkoutExercise(
         workoutId: widget.workoutId,
         exerciseId: widget.selectedExercise.id!,
         orderIndex: nextOrder,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         createdAt: DateTime.now(),
       );
 
-      final workoutExerciseId = await _databaseService.workoutExercises.insertWorkoutExercise(workoutExercise);
+      final workoutExerciseId = await _databaseService.workoutExercises
+          .insertWorkoutExercise(workoutExercise);
 
       List<WorkoutSeries> seriesList = [];
       for (int i = 0; i < _seriesList.length; i++) {
@@ -94,7 +116,10 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
         seriesList.add(series);
       }
 
-      await _databaseService.series.saveWorkoutExerciseSeries(workoutExerciseId, seriesList);
+      await _databaseService.series.saveWorkoutExerciseSeries(
+        workoutExerciseId,
+        seriesList,
+      );
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -118,7 +143,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('${widget.selectedExercise.name} adicionado ao treino!'),
+              child: Text(
+                '${widget.selectedExercise.name} adicionado ao treino!',
+              ),
             ),
           ],
         ),
@@ -149,51 +176,39 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
   }
 
   Widget _buildInfoCard() {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[50]!, Colors.blue[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[200]!),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue[600],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.info,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
+          Icon(Icons.info_outlined, color: theme.colorScheme.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.selectedExercise.category ?? 'Exercício',
+                  widget.selectedExercise.category,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[800],
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
                     fontSize: 14,
                   ),
                 ),
-                if (widget.selectedExercise.description?.isNotEmpty == true) ...[
+                if (widget.selectedExercise.description?.isNotEmpty ==
+                    true) ...[
                   const SizedBox(height: 2),
                   Text(
                     widget.selectedExercise.description!,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.blue[600],
+                      color: theme.colorScheme.onSurfaceVariant,
                       height: 1.2,
                     ),
                   ),
@@ -241,10 +256,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                 const Expanded(
                   child: Text(
                     'Série',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                 ),
 
@@ -269,17 +281,26 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                     // Repetições
                     Expanded(
                       child: TextFormField(
-                        initialValue: seriesData.repetitions?.toString() ?? '12',
+                        initialValue:
+                            seriesData.repetitions?.toString() ?? '12',
                         decoration: InputDecoration(
                           labelText: 'Repetições',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           prefixIcon: const Icon(Icons.repeat, size: 20),
                         ),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Obrigatório';
+                          if (value == null || value.isEmpty)
+                            return 'Obrigatório';
                           final reps = int.tryParse(value);
                           if (reps == null || reps <= 0) return 'Deve ser > 0';
                           if (reps > 999) return 'Máximo 999';
@@ -302,13 +323,25 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                         initialValue: seriesData.weight?.toString() ?? '0',
                         decoration: InputDecoration(
                           labelText: 'Peso (kg)',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          prefixIcon: const Icon(Icons.fitness_center, size: 20),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.fitness_center,
+                            size: 20,
+                          ),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ),
                         ],
                         validator: (value) {
                           if (value != null && value.isNotEmpty) {
@@ -337,8 +370,13 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   decoration: InputDecoration(
                     labelText: 'Descanso (segundos)',
                     hintText: 'Ex: 60, 90, 120...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     prefixIcon: const Icon(Icons.timer, size: 20),
                   ),
                   keyboardType: TextInputType.number,
@@ -368,6 +406,8 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Column(
@@ -375,23 +415,19 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue[600],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.add_circle,
-                  color: Colors.white,
-                  size: 20,
-                ),
+              Icon(
+                Icons.add_circle_outlined,
+                color: theme.colorScheme.primary,
+                size: 20,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Configurar Exercício',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -400,7 +436,7 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
           Text(
             widget.selectedExercise.name,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.grey[700],
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -441,8 +477,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                 const SizedBox(height: 8),
 
                 // Lista de séries
-                ...List.generate(_seriesList.length, (index) =>
-                  Padding(
+                ...List.generate(
+                  _seriesList.length,
+                  (index) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _buildSeriesCard(index),
                   ),
@@ -456,7 +493,9 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
                   decoration: InputDecoration(
                     labelText: 'Observações (opcional)',
                     hintText: 'Ex: Foco na forma, técnica específica...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     prefixIcon: Icon(Icons.note, color: Colors.blue[600]),
                     filled: true,
                     fillColor: Colors.grey[50],
@@ -472,22 +511,27 @@ class _AddWorkoutExerciseDialogState extends State<AddWorkoutExerciseDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+          child: Text(
+            'Cancelar',
+            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _addExerciseToWorkout,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue[600],
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: theme.colorScheme.onPrimary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           child: _isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: theme.colorScheme.onPrimary,
                   ),
                 )
               : const Text('Adicionar ao Treino'),

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/series_type.dart';
 
@@ -138,30 +137,42 @@ class AppConstants {
   static IconData getMuscleGroupIcon(String muscleGroup) {
     return muscleGroupIcons[muscleGroup] ?? Icons.fitness_center;
   }
+
   static Color getMuscleGroupColor(String muscleGroup, {bool isDark = false}) {
     if (isDark) {
       return categoryColorsDark[muscleGroup] ?? categoryColorsDark['Cardio']!;
     }
     return categoryColors[muscleGroup] ?? categoryColors['Cardio']!;
   }
+
   static Color getSeriesTypeColor(SeriesType type, {bool isDark = false}) {
     if (isDark) {
-      return seriesTypeColorsDark[type] ?? seriesTypeColorsDark[SeriesType.valid]!;
+      return seriesTypeColorsDark[type] ??
+          seriesTypeColorsDark[SeriesType.valid]!;
     }
     return seriesTypeColors[type] ?? seriesTypeColors[SeriesType.valid]!;
   }
-  static Color getSeriesTypeBackgroundColor(SeriesType type, {bool isDark = false}) {
+
+  static Color getSeriesTypeBackgroundColor(
+    SeriesType type, {
+    bool isDark = false,
+  }) {
     if (isDark) {
-      return seriesTypeBackgroundColorsDark[type] ?? seriesTypeBackgroundColorsDark[SeriesType.valid]!;
+      return seriesTypeBackgroundColorsDark[type] ??
+          seriesTypeBackgroundColorsDark[SeriesType.valid]!;
     }
-    return seriesTypeBackgroundColors[type] ?? seriesTypeBackgroundColors[SeriesType.valid]!;
+    return seriesTypeBackgroundColors[type] ??
+        seriesTypeBackgroundColors[SeriesType.valid]!;
   }
+
   static IconData getSeriesTypeIcon(SeriesType type) {
     return seriesTypeIcons[type] ?? Icons.help_rounded;
   }
+
   static String getSeriesTypeName(SeriesType type) {
     return seriesTypeNames[type] ?? 'Desconhecido';
   }
+
   static bool shouldShowField(SeriesType type, String field) {
     switch (type) {
       case SeriesType.valid:
@@ -176,20 +187,30 @@ class AppConstants {
         return field == 'rest';
     }
   }
+
   static Map<String, Map<String, dynamic>> getStatusConfigs(bool isDark) {
     return {
       'active': {
-        'color': isDark ? const Color(0xFF34D399) : const Color(0xFF10B981), // Emerald
-        'backgroundColor': isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
+        'color': isDark
+            ? const Color(0xFF34D399)
+            : const Color(0xFF10B981), // Emerald
+        'backgroundColor': isDark
+            ? const Color(0xFF064E3B)
+            : const Color(0xFFD1FAE5),
         'text': 'ATIVA',
       },
       'inactive': {
-        'color': isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), // Slate
-        'backgroundColor': isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+        'color': isDark
+            ? const Color(0xFF94A3B8)
+            : const Color(0xFF64748B), // Slate
+        'backgroundColor': isDark
+            ? const Color(0xFF334155)
+            : const Color(0xFFF1F5F9),
         'text': 'INATIVA',
       },
     };
   }
+
   static List<BoxShadow> getCardShadow(bool isDark) {
     if (isDark) {
       return [
@@ -214,6 +235,7 @@ class AppConstants {
       ];
     }
   }
+
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)], // Indigo to Violet
     begin: Alignment.topLeft,

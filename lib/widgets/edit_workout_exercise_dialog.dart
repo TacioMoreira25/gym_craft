@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gym_craft/models/exercise.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_series.dart';
-import '../models/series_type.dart';
 import '../services/database_service.dart';
-import '../utils/constants.dart';
 import '../widgets/exercise_image_widget.dart';
-import '../widgets/ImageViewerDialog.dart';
 import '../widgets/series_editor_widget.dart';
 
 class EditWorkoutExerciseDialog extends StatefulWidget {
@@ -162,13 +158,13 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: const BorderRadius.only(
@@ -182,11 +178,17 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                   Row(
                     children: [
                       ExerciseImageWidget(
-                        imageUrl: widget.workoutExerciseData['image_url'] as String?,
-                        category: widget.workoutExerciseData['category'] as String?,
-                        borderRadius: BorderRadius.circular(8),
-                        enableTap: true,
-                        exerciseName: widget.workoutExerciseData['exercise_name'] as String?,
+                        imageUrl:
+                            widget.workoutExerciseData['image_url'] as String?,
+                        category:
+                            widget.workoutExerciseData['category'] as String?,
+                        width: 50,
+                        height: 50,
+                        borderRadius: BorderRadius.circular(10),
+                        enableTap: false,
+                        exerciseName:
+                            widget.workoutExerciseData['exercise_name']
+                                as String?,
                       ),
                       const SizedBox(width: 12),
 
@@ -195,68 +197,24 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.edit,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Editar Exercício',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
                             Text(
-                              exerciseName,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
+                              'Editar Exercício',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 2),
-                            // Categoria com ícone
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.fitness_center,
-                                  size: 14,
-                                  color: Colors.grey[500],
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  widget.workoutExerciseData['category'] ?? '',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[500],
-                                    fontWeight: FontWeight.w400,
+                            Text(
+                              exerciseName,
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.touch_app,
-                                  size: 12,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Toque na imagem para ampliar',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[400],
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
                             ),
                           ],
                         ),
@@ -270,7 +228,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
             // Content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -289,7 +247,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
                       // Series Editor
                       if (_isLoading)
@@ -315,7 +273,7 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
 
             // Actions
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: const BorderRadius.only(
@@ -343,7 +301,9 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: (_isLoading || _isSaving) ? null : _updateWorkoutExercise,
+                    onPressed: (_isLoading || _isSaving)
+                        ? null
+                        : _updateWorkoutExercise,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
@@ -358,7 +318,9 @@ class _EditWorkoutExerciseDialogState extends State<EditWorkoutExerciseDialog> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text('Salvar'),

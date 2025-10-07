@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
-import '../utils/constants.dart';
 import 'create_workout_screen.dart';
 import 'workout_detail_screen.dart';
 import '../widgets/edit_workout_dialog.dart';
@@ -54,7 +53,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
       final workouts = await _databaseService.workouts.getWorkoutsByRoutine(
         widget.routine.id!,
       );
-      final stats = await _databaseService.routines.getRoutineStats(widget.routine.id!);
+      final stats = await _databaseService.routines.getRoutineStats(
+        widget.routine.id!,
+      );
 
       final orderedWorkouts = await _applyCustomOrder(workouts);
 
@@ -77,7 +78,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   Future<List<Workout>> _applyCustomOrder(List<Workout> workouts) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? savedOrder = prefs.getString('workout_order_${widget.routine.id}');
+      String? savedOrder = prefs.getString(
+        'workout_order_${widget.routine.id}',
+      );
 
       if (savedOrder == null) return workouts;
 
@@ -85,11 +88,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
       List<Workout> orderedWorkouts = [];
 
       for (int id in orderIds) {
-        Workout? workout = workouts.firstWhere(
-          (w) => w.id == id,
-          orElse: () => null as Workout,
-        );
-        if (workout != null) orderedWorkouts.add(workout);
+        try {
+          Workout workout = workouts.firstWhere((w) => w.id == id);
+          orderedWorkouts.add(workout);
+        } catch (e) {
+          // Continue se não encontrar o workout
+        }
       }
 
       for (Workout workout in workouts) {
@@ -108,7 +112,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       List<int> workoutIds = _workouts.map((workout) => workout.id!).toList();
-      await prefs.setString('workout_order_${widget.routine.id}', jsonEncode(workoutIds));
+      await prefs.setString(
+        'workout_order_${widget.routine.id}',
+        jsonEncode(workoutIds),
+      );
     } catch (e) {
       print('Erro ao salvar ordem dos treinos: $e');
     }
@@ -120,7 +127,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? const Color(0xFF8B5A5A) : const Color(0xFF5A8B5A),
+        backgroundColor: isError
+            ? const Color(0xFF8B5A5A)
+            : const Color(0xFF5A8B5A),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         margin: const EdgeInsets.all(16),
@@ -131,7 +140,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return PopScope(
       canPop: !_isReorderMode,
@@ -139,14 +147,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
         if (!didPop && _isReorderMode) _exitReorderMode();
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
-        appBar: _buildMinimalAppBar(isDark),
+        backgroundColor: theme.colorScheme.background,
+        appBar: _buildAppBar(theme),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF6B6B6B)))
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
+              )
             : Column(
                 children: [
-                  if (!_isReorderMode) _buildHeaderSection(isDark),
-                  Expanded(child: _buildWorkoutsSection(isDark)),
+                  if (!_isReorderMode) _buildHeaderSection(theme),
+                  Expanded(child: _buildWorkoutsSection(theme)),
                 ],
               ),
         floatingActionButton: !_isReorderMode ? _buildFAB() : null,
@@ -154,32 +166,35 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  AppBar _buildMinimalAppBar(bool isDark) {
+  AppBar _buildAppBar(ThemeData theme) {
     return AppBar(
       title: Text(
         _isReorderMode ? 'Reordenar Treinos' : widget.routine.name,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+          color: theme.colorScheme.onSurface,
         ),
       ),
-      backgroundColor: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
+      backgroundColor: theme.colorScheme.surface,
       elevation: 0,
       leading: _isReorderMode
           ? IconButton(
-              icon: Icon(Icons.close, color: isDark ? Colors.white : const Color(0xFF2A2A2A)),
+              icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
               onPressed: _exitReorderMode,
             )
           : IconButton(
-              icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : const Color(0xFF2A2A2A)),
+              icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
         if (!_isReorderMode && _workouts.isNotEmpty)
           IconButton(
             onPressed: () => setState(() => _isReorderMode = true),
-            icon: Icon(Icons.reorder, color: isDark ? Colors.white70 : const Color(0xFF6B6B6B)),
+            icon: Icon(
+              Icons.reorder,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             tooltip: 'Reordenar',
           ),
         if (_isReorderMode)
@@ -189,14 +204,14 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               _exitReorderMode();
               _showSnackBar('Ordem salva');
             },
-            icon: const Icon(Icons.check, color: Color(0xFF5A8B5A)),
+            icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Salvar',
           ),
       ],
     );
   }
 
-  Widget _buildHeaderSection(bool isDark) {
+  Widget _buildHeaderSection(ThemeData theme) {
     return Container(
       margin: const EdgeInsets.all(20),
       child: Column(
@@ -209,21 +224,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: widget.routine.isActive
-                      ? const Color(0xFF5A8B5A).withOpacity(0.1)
-                      : const Color(0xFF6B6B6B).withOpacity(0.1),
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: widget.routine.isActive
-                        ? const Color(0xFF5A8B5A).withOpacity(0.3)
-                        : const Color(0xFF6B6B6B).withOpacity(0.3),
-                  ),
                 ),
                 child: Text(
                   widget.routine.isActive ? 'ATIVA' : 'INATIVA',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: widget.routine.isActive ? const Color(0xFF5A8B5A) : const Color(0xFF6B6B6B),
+                    color: widget.routine.isActive
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -232,7 +244,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                 _formatDate(widget.routine.createdAt),
                 style: TextStyle(
                   fontSize: 12,
-                  color: isDark ? Colors.white60 : const Color(0xFF8A8A8A),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -246,7 +258,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
-                color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -256,35 +268,44 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE5E5E5),
+                color: theme.colorScheme.outline.withOpacity(0.12),
               ),
             ),
             child: Row(
               children: [
-                _buildStatItem('${_stats['workouts_count'] ?? 0}', 'treinos', isDark),
+                _buildStatItem(
+                  '${_stats['workouts_count'] ?? 0}',
+                  'treinos',
+                  theme,
+                ),
                 Container(
                   width: 1,
                   height: 30,
                   margin: const EdgeInsets.symmetric(horizontal: 20),
-                  color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE5E5E5),
+                  color: theme.colorScheme.outline.withOpacity(0.2),
                 ),
-                _buildStatItem('${_stats['exercises_count'] ?? 0}', 'exercícios', isDark),
+                _buildStatItem(
+                  '${_stats['exercises_count'] ?? 0}',
+                  'exercícios',
+                  theme,
+                ),
               ],
             ),
           ),
 
           // Grupos musculares
-          if (_stats['muscle_groups'] != null && _stats['muscle_groups'].isNotEmpty) ...[
+          if (_stats['muscle_groups'] != null &&
+              _stats['muscle_groups'].isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
               'Grupos musculares',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
@@ -293,16 +314,19 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               runSpacing: 6,
               children: (_stats['muscle_groups'] as List).map<Widget>((group) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
+                    color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     group,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 );
@@ -314,7 +338,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildStatItem(String value, String label, bool isDark) {
+  Widget _buildStatItem(String value, String label, ThemeData theme) {
     return Expanded(
       child: Column(
         children: [
@@ -323,7 +347,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 2),
@@ -331,7 +355,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isDark ? Colors.white60 : const Color(0xFF8A8A8A),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -339,17 +363,17 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutsSection(bool isDark) {
+  Widget _buildWorkoutsSection(ThemeData theme) {
     if (_workouts.isEmpty) {
-      return _buildEmptyState(isDark);
+      return _buildEmptyState(theme);
     }
 
     return _isReorderMode
-        ? _buildReorderableList(isDark)
-        : _buildWorkoutsList(isDark);
+        ? _buildReorderableList(theme)
+        : _buildWorkoutsList(theme);
   }
 
-  Widget _buildReorderableList(bool isDark) {
+  Widget _buildReorderableList(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -358,19 +382,25 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF5A8B8B).withOpacity(0.1),
+              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF5A8B8B).withOpacity(0.2)),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.2),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, size: 16, color: const Color(0xFF5A8B8B)),
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Arraste os itens para reordenar',
                   style: TextStyle(
                     fontSize: 12,
-                    color: const Color(0xFF5A8B8B),
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],
@@ -389,7 +419,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               },
               itemBuilder: (context, index) {
                 final workout = _workouts[index];
-                return _buildReorderableWorkoutCard(workout, index, isDark);
+                return _buildReorderableWorkoutCard(workout, index, theme);
               },
             ),
           ),
@@ -398,27 +428,29 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildReorderableWorkoutCard(Workout workout, int index, bool isDark) {
+  Widget _buildReorderableWorkoutCard(
+    Workout workout,
+    int index,
+    ThemeData theme,
+  ) {
     return Container(
       key: ValueKey(workout.id),
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE5E5E5),
-        ),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
       child: Row(
         children: [
-          Icon(Icons.drag_handle, color: isDark ? Colors.white30 : const Color(0xFFB0B0B0)),
+          Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 12),
           Container(
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
+              color: theme.colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -427,7 +459,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -442,7 +474,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 if (workout.description?.isNotEmpty == true) ...[
@@ -451,7 +483,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                     workout.description!,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.white60 : const Color(0xFF8A8A8A),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -465,7 +497,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutsList(bool isDark) {
+  Widget _buildWorkoutsList(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -476,7 +508,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -486,7 +518,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               itemBuilder: (context, index) {
                 return FadeTransition(
                   opacity: _fadeAnimation,
-                  child: _buildWorkoutCard(_workouts[index], index, isDark),
+                  child: _buildWorkoutCard(_workouts[index], index, theme),
                 );
               },
             ),
@@ -496,15 +528,13 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutCard(Workout workout, int index, bool isDark) {
+  Widget _buildWorkoutCard(Workout workout, int index, ThemeData theme) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE5E5E5),
-        ),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -526,7 +556,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
+                    color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
@@ -535,7 +565,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -550,7 +580,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       if (workout.description?.isNotEmpty == true) ...[
@@ -559,7 +589,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                           workout.description!,
                           style: TextStyle(
                             fontSize: 13,
-                            color: isDark ? Colors.white60 : const Color(0xFF8A8A8A),
+                            color: theme.colorScheme.onSurfaceVariant,
                             height: 1.3,
                           ),
                           maxLines: 2,
@@ -573,10 +603,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                 PopupMenuButton<String>(
                   icon: Icon(
                     Icons.more_vert,
-                    color: isDark ? Colors.white30 : const Color(0xFFB0B0B0),
+                    color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   onSelected: (value) {
                     if (value == 'edit') {
                       showDialog(
@@ -595,7 +627,11 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit, size: 16, color: const Color(0xFF5A8B8B)),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 8),
                           const Text('Editar', style: TextStyle(fontSize: 14)),
                         ],
@@ -605,9 +641,19 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, size: 16, color: const Color(0xFF8B5A5A)),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Excluir', style: TextStyle(fontSize: 14, color: const Color(0xFF8B5A5A))),
+                          Text(
+                            'Excluir',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -621,7 +667,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildEmptyState(bool isDark) {
+  Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -631,13 +677,13 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F0F0),
+                color: theme.colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
-                Icons.fitness_center,
+                Icons.fitness_center_outlined,
                 size: 40,
-                color: isDark ? Colors.white30 : const Color(0xFFB0B0B0),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 20),
@@ -646,7 +692,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
@@ -654,7 +700,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               'Adicione treinos à sua rotina',
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Colors.white54 : const Color(0xFF8A8A8A),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -664,83 +710,43 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   }
 
   Widget _buildFAB() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+    return FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CreateWorkoutScreen(routine: widget.routine),
           ),
-        ],
-      ),
-      child: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateWorkoutScreen(routine: widget.routine),
-            ),
-          ).then((_) => _loadData());
-        },
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: const Icon(Icons.add, color: Colors.white, size: 24),
-      ),
+        ).then((_) => _loadData());
+      },
+      child: const Icon(Icons.add),
     );
   }
 
   void _showDeleteWorkoutDialog(Workout workout) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text(
-            'Excluir treino?',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF2A2A2A),
-            ),
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir treino?'),
+        content: Text(
+          'O treino "${workout.name}" será excluído permanentemente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
           ),
-          content: Text(
-            'O treino "${workout.name}" será excluído permanentemente.',
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
-            ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _databaseService.workouts.deleteWorkout(workout.id!);
+              _loadData();
+              _showSnackBar('Treino excluído', isError: true);
+            },
+            child: const Text('Excluir'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                  color: isDark ? Colors.white60 : const Color(0xFF8A8A8A),
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _databaseService.workouts.deleteWorkout(workout.id!);
-                _loadData();
-                _showSnackBar('Treino excluído', isError: true);
-              },
-              child: const Text(
-                'Excluir',
-                style: TextStyle(color: Color(0xFF8B5A5A)),
-              ),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 

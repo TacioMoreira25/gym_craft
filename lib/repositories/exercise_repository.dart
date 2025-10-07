@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import 'base_repository.dart';
 import '../models/exercise.dart';
 import '../database/config/database_config.dart';
@@ -6,7 +5,7 @@ import '../database/config/database_config.dart';
 class ExerciseRepository extends BaseRepository {
   @override
   String get tableName => DatabaseConfig.exercisesTable;
-  
+
   Future<int> insertExercise(Exercise exercise) async {
     try {
       return await insert(exercise.toMap());
@@ -18,7 +17,7 @@ class ExerciseRepository extends BaseRepository {
       rethrow;
     }
   }
-  
+
   Future<Exercise?> getExerciseByName(String name) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -28,12 +27,12 @@ class ExerciseRepository extends BaseRepository {
     );
     return maps.isNotEmpty ? Exercise.fromMap(maps.first) : null;
   }
-  
+
   Future<List<Exercise>> getAllExercises() async {
     final maps = await getAll(orderBy: 'is_custom DESC, name ASC');
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
-  
+
   Future<List<Exercise>> getExercisesByCategory(String category) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -44,16 +43,16 @@ class ExerciseRepository extends BaseRepository {
     );
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
-  
+
   Future<Exercise?> getExerciseById(int id) async {
     final map = await getById(id);
     return map != null ? Exercise.fromMap(map) : null;
   }
-  
+
   Future<int> updateExercise(Exercise exercise) async {
     return await update(exercise.toMap(), exercise.id!);
   }
-  
+
   Future<bool> canDeleteExercise(int exerciseId) async {
     final db = await database;
     final List<Map<String, dynamic>> workoutExercises = await db.query(
@@ -63,7 +62,7 @@ class ExerciseRepository extends BaseRepository {
     );
     return workoutExercises.isEmpty;
   }
-  
+
   Future<int> deleteExercise(int id) async {
     final canDelete = await canDeleteExercise(id);
     if (!canDelete) {
@@ -71,10 +70,10 @@ class ExerciseRepository extends BaseRepository {
     }
     return await delete(id);
   }
-  
+
   Future<int> getOrCreateExercise(String name, String description, String category, {String? instructions, String? imageUrl}) async {
     Exercise? existing = await getExerciseByName(name);
-    
+
     if (existing != null) {
       return existing.id!;
     }
@@ -91,7 +90,7 @@ class ExerciseRepository extends BaseRepository {
 
     return await insertExercise(exercise);
   }
-  
+
   Future<List<String>> getAllCategories() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery(
@@ -99,7 +98,7 @@ class ExerciseRepository extends BaseRepository {
     );
     return result.map((row) => row['category'] as String).toList();
   }
-  
+
   Future<List<Exercise>> getCustomExercises() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -110,7 +109,7 @@ class ExerciseRepository extends BaseRepository {
     );
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
-  
+
   Future<List<Exercise>> getExercisesWithImages() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -120,7 +119,7 @@ class ExerciseRepository extends BaseRepository {
     );
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
-  
+
   Future<List<Exercise>> getExercisesWithoutImages() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -130,7 +129,7 @@ class ExerciseRepository extends BaseRepository {
     );
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
   }
-  
+
   Future<int> updateExerciseImage(int exerciseId, String? imageUrl) async {
     final db = await database;
     return await db.update(
@@ -140,7 +139,7 @@ class ExerciseRepository extends BaseRepository {
       whereArgs: [exerciseId],
     );
   }
-  
+
   Future<List<Exercise>> searchExercises(String query) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(

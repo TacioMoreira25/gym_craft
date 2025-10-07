@@ -18,35 +18,29 @@ class AppTheme {
       onPrimary: Colors.white,
       primaryContainer: Color(0xFFEEF2FF), // Indigo-50
       onPrimaryContainer: Color(0xFF1E1B4B), // Indigo-900
-
       // Secondary colors
       secondary: secondaryPurple,
       onSecondary: Colors.white,
       secondaryContainer: Color(0xFFF3E8FF), // Violet-50
       onSecondaryContainer: Color(0xFF4C1D95), // Violet-900
-
       // Tertiary colors
       tertiary: accentTeal,
       onTertiary: Colors.white,
       tertiaryContainer: Color(0xFFECFEFF), // Cyan-50
       onTertiaryContainer: Color(0xFF164E63), // Cyan-900
-
       // Error colors
       error: errorRed,
       onError: Colors.white,
       errorContainer: Color(0xFFFEF2F2), // Red-50
       onErrorContainer: Color(0xFF7F1D1D), // Red-900
-
       // Surface colors
       surface: Colors.white,
       onSurface: Color(0xFF1F2937), // Gray-800
       surfaceVariant: Color(0xFFF9FAFB), // Gray-50
       onSurfaceVariant: Color(0xFF6B7280), // Gray-500
-
       // Background colors
       background: Color(0xFFFFFFFF),
       onBackground: Color(0xFF1F2937), // Gray-800
-
       // Outline
       outline: Color(0xFFD1D5DB), // Gray-300
       outlineVariant: Color(0xFFF3F4F6), // Gray-100
@@ -66,21 +60,24 @@ class AppTheme {
       ),
     ),
 
-   cardTheme: CardThemeData(
-      elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.08),
+    // Card Theme
+    cardTheme: CardThemeData(
+      elevation: 0,
+      shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: const Color(0xFFE5E5E5), width: 1),
       ),
       clipBehavior: Clip.antiAlias,
+      color: Colors.white,
     ),
 
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primaryBlue,
       foregroundColor: Colors.white,
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16)),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
     ),
 
@@ -163,35 +160,29 @@ class AppTheme {
       onPrimary: Color(0xFF1E1B4B), // Indigo-900
       primaryContainer: Color(0xFF312E81), // Indigo-800
       onPrimaryContainer: Color(0xFFEEF2FF), // Indigo-50
-
       // Secondary colors
       secondary: Color(0xFFA78BFA), // Violet-400
       onSecondary: Color(0xFF4C1D95), // Violet-900
       secondaryContainer: Color(0xFF6D28D9), // Violet-700
       onSecondaryContainer: Color(0xFFF3E8FF), // Violet-50
-
       // Tertiary colors
       tertiary: Color(0xFF22D3EE), // Cyan-400
       onTertiary: Color(0xFF164E63), // Cyan-900
       tertiaryContainer: Color(0xFF0E7490), // Cyan-700
       onTertiaryContainer: Color(0xFFECFEFF), // Cyan-50
-
       // Error colors
       error: Color(0xFFF87171), // Red-400
       onError: Color(0xFF7F1D1D), // Red-900
       errorContainer: Color(0xFFDC2626), // Red-600
       onErrorContainer: Color(0xFFFEF2F2), // Red-50
-
       // Surface colors
       surface: Color(0xFF1F2937), // Gray-800
       onSurface: Color(0xFFF9FAFB), // Gray-50
       surfaceVariant: Color(0xFF374151), // Gray-700
       onSurfaceVariant: Color(0xFF9CA3AF), // Gray-400
-
       // Background colors
       background: Color(0xFF111827), // Gray-900
       onBackground: Color(0xFFF9FAFB), // Gray-50
-
       // Outline
       outline: Color(0xFF4B5563), // Gray-600
       outlineVariant: Color(0xFF374151), // Gray-700
@@ -213,11 +204,15 @@ class AppTheme {
 
     // Card Theme
     cardTheme: CardThemeData(
-      elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.3),
+      elevation: 0,
+      shadowColor: Colors.transparent,
       color: const Color(0xFF1F2937), // Gray-800
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: const Color(0xFF374151), // Gray-700
+          width: 1,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
     ),
@@ -226,9 +221,9 @@ class AppTheme {
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: Color(0xFF818CF8), // Indigo-400
       foregroundColor: Color(0xFF1E1B4B), // Indigo-900
-      elevation: 6,
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16)),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
     ),
 
@@ -246,7 +241,10 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF818CF8), width: 2), // Indigo-400
+        borderSide: const BorderSide(
+          color: Color(0xFF818CF8),
+          width: 2,
+        ), // Indigo-400
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -332,7 +330,8 @@ class AppTheme {
 
   // Helper methods
   static Color getStatusColor(String status, {bool isDark = false}) {
-    return statusColors[status] ?? (isDark ? Colors.grey[400]! : Colors.grey[600]!);
+    return statusColors[status] ??
+        (isDark ? Colors.grey[400]! : Colors.grey[600]!);
   }
 
   static LinearGradient getPrimaryGradient() => gradients[0];

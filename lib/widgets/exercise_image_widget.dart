@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'ImageViewerDialog.dart'; 
+import '../utils/constants.dart';
+import 'ImageViewerDialog.dart';
 
 class ExerciseImageWidget extends StatelessWidget {
   final String? imageUrl;
@@ -18,55 +19,16 @@ class ExerciseImageWidget extends StatelessWidget {
     this.height = 60,
     this.category,
     this.borderRadius,
-    this.enableTap = true, // Padrão é habilitado
+    this.enableTap = false, // Padrão é desabilitado agora
     this.exerciseName, // Nome do exercício para o dialog
   });
 
   IconData _getCategoryIcon(String? category) {
-    switch (category?.toLowerCase()) {
-      case 'peito':
-        return Icons.fitness_center;
-      case 'costas':
-        return Icons.accessibility_new;
-      case 'quadríceps':
-      case 'posterior':
-      case 'panturrilhas':
-        return Icons.directions_run;
-      case 'ombros':
-        return Icons.sports_gymnastics;
-      case 'bíceps':
-      case 'tríceps':
-        return Icons.sports_kabaddi;
-      case 'abdomen':
-        return Icons.self_improvement;
-      default:
-        return Icons.fitness_center;
-    }
+    return AppConstants.getMuscleGroupIcon(category ?? '');
   }
 
   Color _getCategoryColor(String? category) {
-    switch (category?.toLowerCase()) {
-      case 'peito':
-        return Colors.red;
-      case 'costas':
-        return Colors.blue;
-      case 'quadríceps':
-        return Colors.green;
-      case 'posterior':
-        return Colors.orange;
-      case 'panturrilhas':
-        return Colors.teal;
-      case 'ombros':
-        return Colors.purple;
-      case 'bíceps':
-        return Colors.indigo;
-      case 'tríceps':
-        return Colors.pink;
-      case 'abdomen':
-        return Colors.amber;
-      default:
-        return Colors.grey;
-    }
+    return AppConstants.getMuscleGroupColor(category ?? '');
   }
 
   Widget _buildFallbackWidget() {
@@ -97,9 +59,7 @@ class ExerciseImageWidget extends StatelessWidget {
         color: Colors.grey[200],
         borderRadius: borderRadius ?? BorderRadius.circular(8),
       ),
-      child: const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 
@@ -138,28 +98,7 @@ class ExerciseImageWidget extends StatelessWidget {
             exerciseName: exerciseName ?? 'Exercício',
           );
         },
-        child: Stack(
-          children: [
-            imageWidget,
-            // Overlay sutil para indicar que é clicável
-            Positioned(
-              top: 2,
-              right: 2,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Icon(
-                  Icons.zoom_in,
-                  size: width * 0.15, // Proporcional ao tamanho da imagem
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: imageWidget,
       );
     }
 

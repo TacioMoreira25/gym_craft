@@ -8,17 +8,14 @@ import '../widgets/exercise_image_widget.dart';
 class SelectExerciseScreen extends StatefulWidget {
   final List<int> excludeExerciseIds;
 
-  const SelectExerciseScreen({
-    Key? key,
-    this.excludeExerciseIds = const [],
-  }) : super(key: key);
+  const SelectExerciseScreen({Key? key, this.excludeExerciseIds = const []})
+    : super(key: key);
 
   @override
   State<SelectExerciseScreen> createState() => _SelectExerciseScreenState();
 }
 
-class _SelectExerciseScreenState extends State<SelectExerciseScreen> 
-{
+class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   final DatabaseService _databaseService = DatabaseService();
 
   List<Exercise> _exercises = [];
@@ -28,7 +25,6 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
-
   @override
   void initState() {
     super.initState();
@@ -37,8 +33,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
 
   final List<String> _categories = ['Todos', ...AppConstants.muscleGroups];
 
-
-   IconData _getCategoryIcon(String category) {
+  IconData _getCategoryIcon(String category) {
     if (category == 'Todos') {
       return Icons.list;
     }
@@ -54,14 +49,17 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Selecionar Exercício'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: _navigateToExerciseManagement,
           ),
         ],
@@ -71,9 +69,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildBody() {
@@ -85,78 +81,81 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
           child: Column(
             children: [
               // Campo de busca
-             TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar exercícios...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (_) => _filterExercises(),
+              TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  hintText: 'Buscar exercícios...',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
                 ),
+                onChanged: (_) => _filterExercises(),
+              ),
               const SizedBox(height: 12),
-              
+
               // Filtro por categoria
-               SizedBox(
-                  height: 40,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      final isSelected = category == _selectedCategory;
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          avatar: Icon(
-                            _getCategoryIcon(category),
-                            size: 18,
-                            color: isSelected 
-                                ? _getCategoryColor(category)
-                                : Colors.grey[600],
-                          ),
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedCategory = category;
-                              _filterExercises();
-                            });
-                          },
-                          selectedColor: _getCategoryColor(category).withOpacity(0.2),
-                          checkmarkColor: _getCategoryColor(category),
-                          labelStyle: TextStyle(
-                            color: isSelected 
-                                ? _getCategoryColor(category)
-                                : Colors.grey[700],
-                          ),
+              SizedBox(
+                height: 40,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    final isSelected = category == _selectedCategory;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        avatar: Icon(
+                          _getCategoryIcon(category),
+                          size: 18,
+                          color: isSelected
+                              ? _getCategoryColor(category)
+                              : Colors.grey[600],
                         ),
-                      );
-                    },
-                  ),
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                            _filterExercises();
+                          });
+                        },
+                        selectedColor: _getCategoryColor(
+                          category,
+                        ).withOpacity(0.2),
+                        checkmarkColor: _getCategoryColor(category),
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? _getCategoryColor(category)
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    );
+                  },
                 ),
+              ),
             ],
           ),
         ),
-        
+
         // Lista de exercícios
         Expanded(
           child: _filteredExercises.isEmpty
               ? _buildEmptyState()
-
               : ListView.builder(
                   itemCount: _filteredExercises.length,
                   itemBuilder: (context, index) {
                     final exercise = _filteredExercises[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile
-                      (
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: ListTile(
                         leading: ExerciseImageWidget(
-                        imageUrl: exercise.imageUrl,
-                        width: 50,
-                        height: 50,
+                          imageUrl: exercise.imageUrl,
+                          width: 50,
+                          height: 50,
                         ),
                         title: Text(
                           exercise.name,
@@ -165,10 +164,13 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(exercise.category,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppConstants.getMuscleGroupColor(exercise.category),
+                            Text(
+                              exercise.category,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppConstants.getMuscleGroupColor(
+                                  exercise.category,
+                                ),
                               ),
                             ),
                             if (exercise.description?.isNotEmpty == true)
@@ -182,11 +184,14 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
                         ),
                         trailing: exercise.isCustom
                             ? Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.blue[100],
                                   borderRadius: BorderRadius.circular(12),
-                                ),                            
+                                ),
                               )
                             : null,
                         onTap: () => Navigator.pop(context, exercise),
@@ -204,24 +209,20 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'Nenhum exercício encontrado',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.grey[600],
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
             'Tente ajustar os filtros ou criar um novo exercício',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -237,11 +238,9 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
   void _navigateToExerciseManagement() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const ExerciseManagementScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const ExerciseManagementScreen()),
     );
-    _loadExercises(); 
+    _loadExercises();
   }
 
   Future<void> _loadExercises() async {
@@ -266,32 +265,30 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen>
     }
   }
 
-
-   void _filterExercises() {
+  void _filterExercises() {
     List<Exercise> filtered = _exercises;
 
     // Filtrar por categoria
     if (_selectedCategory != 'Todos') {
-      filtered = filtered.where((e) => e.category == _selectedCategory).toList();
+      filtered = filtered
+          .where((e) => e.category == _selectedCategory)
+          .toList();
     }
 
     // Filtrar por busca
     final searchQuery = _searchController.text.toLowerCase();
     if (searchQuery.isNotEmpty) {
-      filtered = filtered.where((e) =>
-        e.name.toLowerCase().contains(searchQuery) ||
-        (e.description?.toLowerCase().contains(searchQuery) ?? false)
-      ).toList();
+      filtered = filtered
+          .where(
+            (e) =>
+                e.name.toLowerCase().contains(searchQuery) ||
+                (e.description?.toLowerCase().contains(searchQuery) ?? false),
+          )
+          .toList();
     }
 
     setState(() {
       _filteredExercises = filtered;
     });
-  }
-
-  List<String> _getCategories() {
-    final categories = _exercises.map((e) => e.category).toSet().toList();
-    categories.sort();
-    return ['Todas', ...categories];
   }
 }

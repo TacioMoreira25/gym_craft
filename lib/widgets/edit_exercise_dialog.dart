@@ -4,7 +4,6 @@ import '../services/database_service.dart';
 import '../widgets/exercise_image_widget.dart';
 import '../utils/constants.dart';
 
-
 class EditExerciseDialog extends StatefulWidget {
   final Exercise? exercise;
   final VoidCallback onUpdated;
@@ -24,7 +23,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
-  late TextEditingController _imageUrlController; 
+  late TextEditingController _imageUrlController;
   final DatabaseService _databaseService = DatabaseService();
   bool _isLoading = false;
   String _selectedCategory = 'Peito';
@@ -37,10 +36,16 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.exercise?.name ?? '');
-    _descriptionController = TextEditingController(text: widget.exercise?.description ?? '');
-    _instructionsController = TextEditingController(text: widget.exercise?.instructions ?? '');
-    _imageUrlController = TextEditingController(text: widget.exercise?.imageUrl ?? ''); 
-    
+    _descriptionController = TextEditingController(
+      text: widget.exercise?.description ?? '',
+    );
+    _instructionsController = TextEditingController(
+      text: widget.exercise?.instructions ?? '',
+    );
+    _imageUrlController = TextEditingController(
+      text: widget.exercise?.imageUrl ?? '',
+    );
+
     if (widget.exercise != null) {
       _selectedCategory = widget.exercise!.category;
     }
@@ -51,13 +56,14 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _instructionsController.dispose();
-    _imageUrlController.dispose(); 
+    _imageUrlController.dispose();
+    super.dispose();
   }
 
   bool _isValidUrl(String url) {
-    if (url.isEmpty) return true; 
-    return Uri.tryParse(url) != null && 
-           (url.startsWith('http://') || url.startsWith('https://'));
+    if (url.isEmpty) return true;
+    return Uri.tryParse(url) != null &&
+        (url.startsWith('http://') || url.startsWith('https://'));
   }
 
   Future<void> _saveExercise() async {
@@ -69,15 +75,18 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
       final exercise = Exercise(
         id: widget.exercise?.id,
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty 
-            ? null 
+        description: _descriptionController.text.trim().isEmpty
+            ? null
             : _descriptionController.text.trim(),
         category: _selectedCategory,
-        instructions: _instructionsController.text.trim().isEmpty 
-            ? null 
+        instructions: _instructionsController.text.trim().isEmpty
+            ? null
             : _instructionsController.text.trim(),
-        imageUrl: _imageUrlController.text.trim().isEmpty  // Novo campo
-            ? null 
+        imageUrl:
+            _imageUrlController.text
+                .trim()
+                .isEmpty // Novo campo
+            ? null
             : _imageUrlController.text.trim(),
         createdAt: widget.exercise?.createdAt ?? DateTime.now(),
       );
@@ -87,15 +96,17 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
       } else {
         await _databaseService.exercises.insertExercise(exercise);
       }
-      
+
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing 
-                ? 'Exercício atualizado com sucesso!' 
-                : 'Exercício criado com sucesso!'),
+            content: Text(
+              _isEditing
+                  ? 'Exercício atualizado com sucesso!'
+                  : 'Exercício criado com sucesso!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -104,7 +115,9 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao ${_isEditing ? 'atualizar' : 'criar'} exercício: $e'),
+            content: Text(
+              'Erro ao ${_isEditing ? 'atualizar' : 'criar'} exercício: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -119,10 +132,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            _isEditing ? Icons.edit : Icons.add,
-            color: Colors.indigo,
-          ),
+          Icon(_isEditing ? Icons.edit : Icons.add, color: Colors.indigo),
           const SizedBox(width: 8),
           Text(_isEditing ? 'Editar Exercício' : 'Novo Exercício'),
         ],
@@ -168,7 +178,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Dropdown Categoria
                 DropdownButtonFormField<String>(
                   value: _selectedCategory,
@@ -207,7 +217,9 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                     hintText: 'https://exemplo.com/imagem.jpg',
                   ),
                   validator: (value) {
-                    if (value != null && value.isNotEmpty && !_isValidUrl(value)) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !_isValidUrl(value)) {
                       return 'Por favor, informe uma URL válida';
                     }
                     return null;
@@ -234,7 +246,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Campo Descrição (opcional)
                 TextFormField(
                   controller: _descriptionController,
@@ -247,7 +259,7 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Campo Instruções (opcional)
                 TextFormField(
                   controller: _instructionsController,
@@ -259,9 +271,11 @@ class _EditExerciseDialogState extends State<EditExerciseDialog> {
                   ),
                   maxLines: 3,
                 ),
-                
+
                 // Informação sobre exercício personalizado
-                if (_isEditing && widget.exercise != null && !widget.exercise!.isCustom) ...[
+                if (_isEditing &&
+                    widget.exercise != null &&
+                    !widget.exercise!.isCustom) ...[
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,

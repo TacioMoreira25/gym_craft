@@ -21,24 +21,29 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Novo Treino'),
+        title: const Text('Novo Treino'),
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
+        elevation: 0,
         actions: [
           TextButton(
             onPressed: _saveWorkout,
             child: Text(
               'SALVAR',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -46,16 +51,18 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
             children: [
               // Informações da rotina pai
               Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.indigo[50],
+                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.indigo[200]!),
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withOpacity(0.12),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info, color: Colors.indigo[600]),
-                    SizedBox(width: 8),
+                    Icon(Icons.info_outlined, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,14 +71,14 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                             'Adicionando treino para:',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.indigo[700],
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           Text(
                             widget.routine.name,
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo[800],
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -80,12 +87,19 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Formulário do treino
               Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: theme.colorScheme.outline.withOpacity(0.12),
+                  ),
+                ),
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -93,17 +107,20 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                         'Informações do Treino',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _nameController,
                         decoration: InputDecoration(
                           labelText: 'Nome do Treino',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.fitness_center),
                           hintText: 'Ex: Treino A, Push, Peito e Tríceps',
+                          prefixIcon: Icon(
+                            Icons.fitness_center_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -112,14 +129,16 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                           return null;
                         },
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
                         decoration: InputDecoration(
                           labelText: 'Descrição (opcional)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
                           hintText: 'Descreva o foco deste treino...',
+                          prefixIcon: Icon(
+                            Icons.description_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                         maxLines: 2,
                       ),
@@ -127,17 +146,18 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Sugestões de nomes
               Text(
                 'Sugestões de Nomes',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -147,43 +167,52 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
                     onPressed: () {
                       _nameController.text = suggestion;
                     },
-                    backgroundColor: Colors.indigo[50],
-                    labelStyle: TextStyle(color: Colors.indigo[700]),
+                    backgroundColor: theme.colorScheme.surfaceVariant
+                        .withOpacity(0.5),
+                    labelStyle: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    side: BorderSide.none,
                   );
                 }).toList(),
               ),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
 
               // Próximos passos
               Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withOpacity(0.12),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.lightbulb, color: Colors.green[600]),
-                        SizedBox(width: 8),
+                        Icon(
+                          Icons.lightbulb_outlined,
+                          color: theme.colorScheme.tertiary,
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           'Após salvar:',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[800],
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onTertiaryContainer,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Você poderá adicionar exercícios a este treino, definindo séries, repetições e peso para cada um.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.green[700],
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -205,8 +234,8 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
       final workout = Workout(
         routineId: widget.routine.id!,
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty 
-            ? null 
+        description: _descriptionController.text.trim().isEmpty
+            ? null
             : _descriptionController.text.trim(),
         createdAt: DateTime.now(),
       );

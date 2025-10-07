@@ -43,10 +43,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _loadWorkoutExercises();
   }
@@ -150,12 +150,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
   Future<void> _addExercise() async {
     final Exercise? selectedExercise = await Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const SelectExerciseScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const SelectExerciseScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: animation.drive(
-              Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
-                  .chain(CurveTween(curve: Curves.easeInOutCubic)),
+              Tween(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ).chain(CurveTween(curve: Curves.easeInOutCubic)),
             ),
             child: child,
           );
@@ -216,7 +219,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
       builder: (BuildContext context) {
         final theme = Theme.of(context);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Icon(Icons.warning_rounded, color: Colors.orange[600], size: 28),
@@ -232,7 +237,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Cancelar'),
             ),
@@ -250,7 +257,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[600],
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Remover'),
             ),
@@ -267,8 +276,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
   bool _isValidText(String? text) {
     if (text == null) return false;
 
-    final cleanText = text
-        .replaceAll(RegExp(r'[\s\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'), '');
+    final cleanText = text.replaceAll(
+      RegExp(r'[\s\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'),
+      '',
+    );
 
     return cleanText.isNotEmpty;
   }
@@ -347,7 +358,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    _isReorderMode ? 'Reordenar Exercícios' : widget.workout.name,
+                    _isReorderMode
+                        ? 'Reordenar Exercícios'
+                        : widget.workout.name,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -458,7 +471,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildModernStatCard(String label, String value, IconData icon, Color color, bool isDark) {
+  Widget _buildModernStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    bool isDark,
+  ) {
     return Column(
       children: [
         Container(
@@ -506,18 +525,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: _buildModernExerciseCard(_workoutExercises[index], index, theme, isDark),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          return FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildModernExerciseCard(
+                _workoutExercises[index],
+                index,
+                theme,
+                isDark,
               ),
-            );
-          },
-          childCount: _workoutExercises.length,
-        ),
+            ),
+          );
+        }, childCount: _workoutExercises.length),
       ),
     );
   }
@@ -563,13 +584,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                   if (newIndex > oldIndex) {
                     newIndex -= 1;
                   }
-                  final WorkoutExercise item = _workoutExercises.removeAt(oldIndex);
+                  final WorkoutExercise item = _workoutExercises.removeAt(
+                    oldIndex,
+                  );
                   _workoutExercises.insert(newIndex, item);
                 });
               },
               itemBuilder: (context, index) {
                 final workoutExercise = _workoutExercises[index];
-                return _buildReorderableExerciseCard(workoutExercise, index, theme, isDark);
+                return _buildReorderableExerciseCard(
+                  workoutExercise,
+                  index,
+                  theme,
+                  isDark,
+                );
               },
             ),
           ],
@@ -578,37 +606,35 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildModernExerciseCard(WorkoutExercise workoutExercise, int index, ThemeData theme, bool isDark) {
+  Widget _buildModernExerciseCard(
+    WorkoutExercise workoutExercise,
+    int index,
+    ThemeData theme,
+    bool isDark,
+  ) {
     final exercise = workoutExercise.exercise;
     final series = workoutExercise.series;
-    final muscleGroupColor = AppConstants.getMuscleGroupColor(exercise?.category ?? 'Cardio');
+    final muscleGroupColor = AppConstants.getMuscleGroupColor(
+      exercise?.category ?? 'Cardio',
+    );
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [Colors.grey[850]!, Colors.grey[800]!]
-              : [Colors.white, Colors.grey[50]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.12),
+          width: 1,
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => _editWorkoutExercise(workoutExercise),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -626,22 +652,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                         exerciseName: exercise?.name ?? 'Exercício',
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [muscleGroupColor, muscleGroupColor.withOpacity(0.7)],
+                        color: muscleGroupColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: muscleGroupColor.withOpacity(0.3),
+                          width: 1,
                         ),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: muscleGroupColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: Center(
                         child: Text(
@@ -649,12 +670,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,39 +683,21 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                           Text(
                             exercise?.name ?? 'Exercício',
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white : Colors.grey[800],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: muscleGroupColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: muscleGroupColor.withOpacity(0.2)),
+                          if ((exercise?.category ?? '').isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              exercise?.category ?? '',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.fitness_center_rounded,
-                                  size: 14,
-                                  color: muscleGroupColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  exercise?.category ?? '',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: muscleGroupColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -703,13 +706,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                         Icons.more_vert_rounded,
                         color: isDark ? Colors.grey[400] : Colors.grey[600],
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       itemBuilder: (context) => [
                         PopupMenuItem(
                           value: 'edit',
                           child: Row(
                             children: [
-                              Icon(Icons.edit_rounded, size: 20, color: Colors.blue[600]),
+                              Icon(
+                                Icons.edit_rounded,
+                                size: 20,
+                                color: Colors.blue[600],
+                              ),
                               const SizedBox(width: 12),
                               const Text('Editar'),
                             ],
@@ -719,9 +728,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_rounded, size: 20, color: Colors.red[600]),
+                              Icon(
+                                Icons.delete_rounded,
+                                size: 20,
+                                color: Colors.red[600],
+                              ),
                               const SizedBox(width: 12),
-                              Text('Remover', style: TextStyle(color: Colors.red[600])),
+                              Text(
+                                'Remover',
+                                style: TextStyle(color: Colors.red[600]),
+                              ),
                             ],
                           ),
                         ),
@@ -741,99 +757,95 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                 ),
 
                 if (series.isNotEmpty) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
-                    'Séries configuradas',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.grey[300] : Colors.grey[700],
-                      fontSize: 16,
+                    'Séries (${series.length})',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   ...series.asMap().entries.map((entry) {
-                    final index = entry.key;
+                    final sIndex = entry.key;
                     final s = entry.value;
-                    final seriesTypeColor = AppConstants.getSeriesTypeColor(s.type);
-                    final seriesTypeName = AppConstants.getSeriesTypeName(s.type);
+                    final typeColor = AppConstants.getSeriesTypeColor(s.type);
+                    final typeName = AppConstants.getSeriesTypeName(s.type);
 
                     return Container(
-                      width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            seriesTypeColor.withOpacity(0.1),
-                            seriesTypeColor.withOpacity(0.05),
-                          ],
+                        color: theme.colorScheme.surfaceVariant.withOpacity(
+                          isDark ? 0.1 : 0.4,
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: seriesTypeColor.withOpacity(0.2)),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: typeColor.withOpacity(0.6),
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: seriesTypeColor.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                child: Icon(
-                                  AppConstants.getSeriesTypeIcon(s.type),
-                                  size: 16,
-                                  color: seriesTypeColor,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: typeColor.withOpacity(0.7),
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${sIndex + 1}ª  $typeName',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: typeColor,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  _buildSeriesText(s, index + 1, seriesTypeName),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: seriesTypeColor,
-                                    fontWeight: FontWeight.w600,
+                                  _buildSeriesText(s, sIndex + 1, typeName),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                           if (_isValidText(s.notes)) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.grey[800] : Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                            const SizedBox(height: 6),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.notes_rounded,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.sticky_note_2_rounded,
-                                    size: 16,
-                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      s.notes!.trim(),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark ? Colors.grey[300] : Colors.grey[700],
-                                        fontStyle: FontStyle.italic,
-                                      ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    s.notes!.trim(),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontSize: 11,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ],
                         ],
@@ -857,7 +869,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.note_rounded, size: 18, color: Colors.amber[700]),
+                        Icon(
+                          Icons.note_rounded,
+                          size: 18,
+                          color: Colors.amber[700],
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -888,8 +904,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     bool isDark,
   ) {
     final exercise = workoutExercise.exercise;
-    final muscleGroupColor =
-        AppConstants.getMuscleGroupColor(exercise?.category ?? 'Cardio');
+    final muscleGroupColor = AppConstants.getMuscleGroupColor(
+      exercise?.category ?? 'Cardio',
+    );
 
     return Container(
       key: ValueKey(workoutExercise.id),
@@ -969,11 +986,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: muscleGroupColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: muscleGroupColor.withOpacity(0.2)),
+                      border: Border.all(
+                        color: muscleGroupColor.withOpacity(0.2),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

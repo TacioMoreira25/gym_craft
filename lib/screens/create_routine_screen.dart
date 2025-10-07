@@ -44,21 +44,17 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _animationController.forward();
   }
@@ -74,7 +70,6 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
@@ -83,81 +78,41 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.arrow_back_rounded,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: _saveRoutine,
-              icon: const Icon(Icons.check_rounded, size: 18),
-              label: const Text('SALVAR'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                elevation: 4,
-                shadowColor: theme.colorScheme.primary.withOpacity(0.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          TextButton(
+            onPressed: _saveRoutine,
+            child: Text(
+              'SALVAR',
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
-              theme.colorScheme.background,
-            ],
-            stops: const [0.0, 0.4],
-          ),
-        ),
         child: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
               position: _slideAnimation,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildHeader(theme),
-                      const SizedBox(height: 32),
-                      _buildFormCard(theme, isDark),
-                      const SizedBox(height: 24),
-                      _buildSuggestionsSection(theme, isDark),
-                      const SizedBox(height: 24),
-                      _buildInfoCard(theme, isDark),
-                    ],
-                  ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(theme),
+                    const SizedBox(height: 24),
+                    _buildFormCard(theme),
+                    const SizedBox(height: 24),
+                    _buildSuggestionsSection(theme),
+                    const SizedBox(height: 24),
+                    _buildInfoCard(theme),
+                  ],
                 ),
               ),
             ),
@@ -207,265 +162,194 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
     );
   }
 
-  Widget _buildFormCard(ThemeData theme, bool isDark) {
+  Widget _buildFormCard(ThemeData theme) {
     return Card(
-      elevation: isDark ? 8 : 4,
-      shadowColor: theme.colorScheme.shadow.withOpacity(isDark ? 0.3 : 0.1),
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withOpacity(0.12),
+          width: 1,
+        ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.surface.withOpacity(0.8),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.edit_outlined,
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Informações da Rotina',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nome da Rotina',
+                  hintText: 'Ex: Push Pull Legs',
+                  prefixIcon: Icon(
+                    Icons.fitness_center_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Por favor, insira o nome da rotina';
+                  }
+                  if (value.trim().length < 2) {
+                    return 'Nome deve ter pelo menos 2 caracteres';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Descrição (opcional)',
+                  hintText: 'Descreva sua rotina...',
+                  prefixIcon: Icon(
+                    Icons.description_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                maxLines: 3,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saveRoutine,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Criar Rotina',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.edit_rounded,
-                  color: theme.colorScheme.primary,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Informações da Rotina',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Nome da Rotina',
-                hintText: 'Ex: Push Pull Legs',
-                prefixIcon: Container(
-                  margin: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.fitness_center_rounded,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.error,
-                    width: 2,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nome é obrigatório';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Descrição (Opcional)',
-                hintText: 'Descreva o objetivo desta rotina...',
-                prefixIcon: Container(
-                  margin: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.description_rounded,
-                    color: theme.colorScheme.secondary,
-                    size: 20,
-                  ),
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildSuggestionsSection(ThemeData theme, bool isDark) {
+  Widget _buildSuggestionsSection(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Icon(
-              Icons.auto_awesome_rounded,
+              Icons.lightbulb_outlined,
               color: theme.colorScheme.primary,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
-              'Sugestões de Nomes',
+              'Sugestões de Rotinas',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onBackground,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],
         ),
         const SizedBox(height: 16),
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: 8,
+          runSpacing: 8,
           children: _routineSuggestions.map((suggestion) {
-            return _buildSuggestionChip(suggestion, theme, isDark);
+            return _buildSuggestionChip(suggestion, theme);
           }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildSuggestionChip(String suggestion, ThemeData theme, bool isDark) {
-    return Material(
-      elevation: isDark ? 4 : 2,
-      shadowColor: theme.colorScheme.shadow.withOpacity(0.2),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: () {
-          _nameController.text = suggestion;
-          if (_descriptionController.text.isEmpty) {
-            _descriptionController.text = _getDescriptionSuggestion(suggestion);
-          }
-
-          HapticFeedback.lightImpact();
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.primaryContainer,
-                theme.colorScheme.primaryContainer.withOpacity(0.7),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.touch_app_rounded,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                suggestion,
-                style: TextStyle(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildSuggestionChip(String suggestion, ThemeData theme) {
+    return ActionChip(
+      label: Text(suggestion),
+      onPressed: () {
+        _nameController.text = suggestion;
+        if (_descriptionController.text.isEmpty) {
+          _descriptionController.text = _getDescriptionSuggestion(suggestion);
+        }
+        HapticFeedback.lightImpact();
+      },
+      backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+      labelStyle: TextStyle(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
       ),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 
-  Widget _buildInfoCard(ThemeData theme, bool isDark) {
+  Widget _buildInfoCard(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.tertiaryContainer,
-            theme.colorScheme.tertiaryContainer.withOpacity(0.7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.tertiary.withOpacity(0.3),
-        ),
-        boxShadow: AppConstants.getCardShadow(isDark),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.route_rounded,
-                  color: theme.colorScheme.tertiary,
-                  size: 24,
-                ),
+              Icon(
+                Icons.info_outlined,
+                color: theme.colorScheme.primary,
+                size: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Text(
-                'Próximos passos:',
+                'Como funciona',
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onTertiaryContainer,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildStep(1, 'Salve esta rotina', theme),
-          _buildStep(2, 'Adicione treinos (ex: Treino A, Push, Peito e Tríceps)', theme),
-          _buildStep(3, 'Em cada treino, adicione exercícios com séries e repetições', theme),
+          _buildStep(1, 'Crie uma rotina com nome e descrição', theme),
+          _buildStep(
+            2,
+            'Adicione treinos específicos (A, B, C ou Push, Pull, Legs)',
+            theme,
+          ),
+          _buildStep(
+            3,
+            'Em cada treino, adicione exercícios com séries e repetições',
+            theme,
+          ),
         ],
       ),
     );
@@ -481,16 +365,16 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: theme.colorScheme.tertiary,
-              borderRadius: BorderRadius.circular(12),
+              color: theme.colorScheme.primary,
+              shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 number.toString(),
                 style: TextStyle(
+                  color: theme.colorScheme.onPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onTertiary,
                 ),
               ),
             ),
@@ -499,8 +383,9 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onTertiaryContainer,
+              style: TextStyle(
+                fontSize: 14,
+                color: theme.colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
             ),
@@ -559,14 +444,9 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(
-                color: theme.colorScheme.primary,
-              ),
+              CircularProgressIndicator(color: theme.colorScheme.primary),
               const SizedBox(height: 16),
-              Text(
-                'Salvando rotina...',
-                style: theme.textTheme.bodyMedium,
-              ),
+              Text('Salvando rotina...', style: theme.textTheme.bodyMedium),
             ],
           ),
         ),
@@ -588,15 +468,15 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
         SnackBar(
           content: Row(
             children: [
-              Icon(
-                Icons.check_circle_rounded,
-                color: Colors.white,
-              ),
+              Icon(Icons.check_circle_rounded, color: Colors.white),
               const SizedBox(width: 12),
               Text('Rotina criada com sucesso!'),
             ],
           ),
-          backgroundColor: AppConstants.getSeriesTypeColor(SeriesType.valid, isDark: isDark),
+          backgroundColor: AppConstants.getSeriesTypeColor(
+            SeriesType.valid,
+            isDark: isDark,
+          ),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -613,10 +493,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
         SnackBar(
           content: Row(
             children: [
-              Icon(
-                Icons.error_rounded,
-                color: Colors.white,
-              ),
+              Icon(Icons.error_rounded, color: Colors.white),
               const SizedBox(width: 12),
               Expanded(child: Text('Erro ao salvar rotina: $e')),
             ],

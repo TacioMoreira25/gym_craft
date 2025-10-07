@@ -16,8 +16,7 @@ class EditRoutineDialog extends StatefulWidget {
   State<EditRoutineDialog> createState() => _EditRoutineDialogState();
 }
 
-class _EditRoutineDialogState extends State<EditRoutineDialog> 
-{
+class _EditRoutineDialogState extends State<EditRoutineDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
@@ -29,7 +28,9 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.routine.name);
-    _descriptionController = TextEditingController(text: widget.routine.description);
+    _descriptionController = TextEditingController(
+      text: widget.routine.description,
+    );
     _isActive = widget.routine.isActive;
   }
 
@@ -55,7 +56,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
       );
 
       await _databaseService.routines.updateRoutine(updatedRoutine);
-      
+
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
@@ -82,12 +83,21 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
-      title: const Row(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
         children: [
-          Icon(Icons.edit, color: Colors.indigo),
-          SizedBox(width: 8),
-          Text('Editar Rotina'),
+          Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(
+            'Editar Rotina',
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
       content: SizedBox(
@@ -116,7 +126,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Campo Descrição
               TextFormField(
                 controller: _descriptionController,
@@ -131,7 +141,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Switch Ativo/Inativo
               Row(
                 children: [
@@ -152,7 +162,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog>
                   ),
                 ],
               ),
-              
+
               // Informação adicional
               if (!_isActive) ...[
                 const SizedBox(height: 8),
