@@ -175,7 +175,6 @@ class _SeriesEditorWidgetState extends State<SeriesEditorWidget> {
         ),
         const SizedBox(height: 16),
 
-        // Lista de cards de séries - CHAVE CRÍTICA AQUI
         ...List.generate(_series.length, (index) {
           final series = _series[index];
 

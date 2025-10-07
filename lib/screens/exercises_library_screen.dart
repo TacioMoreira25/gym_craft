@@ -50,8 +50,9 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
               _searchController.text.toLowerCase(),
             ) ||
             (exercise.description?.toLowerCase().contains(
-              _searchController.text.toLowerCase(),
-            ) ?? false);
+                  _searchController.text.toLowerCase(),
+                ) ??
+                false);
 
         final matchesCategoty =
             _selectedCategory == 'Todos' ||
@@ -129,9 +130,14 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                   Navigator.of(context).pop();
                   _loadExercises();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text('Exercício excluído com sucesso!'),
-                      backgroundColor: Colors.green,
+                      backgroundColor: Colors.red[600],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.all(16),
                     ),
                   );
                 }
@@ -140,7 +146,12 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Erro ao excluir exercício: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.red[600],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.all(16),
                     ),
                   );
                 }
@@ -156,10 +167,24 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Biblioteca de Exercícios'),
-        backgroundColor: Colors.green[700],
+        title: Text(
+          'Biblioteca de Exercícios',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Column(
         children: [
@@ -471,7 +496,10 @@ class _ExercisesLibraryScreenState extends State<ExercisesLibraryScreen> {
                         SizedBox(height: 4),
                         Text(
                           exercise.description!,
-                          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       ],
                     ],

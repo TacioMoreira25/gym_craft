@@ -21,7 +21,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     with SingleTickerProviderStateMixin {
   final DatabaseService _databaseService = DatabaseService();
   List<Workout> _workouts = [];
-  Map<String, dynamic> _stats = {};
   bool _isLoading = true;
   bool _isReorderMode = false;
   late AnimationController _animationController;
@@ -53,16 +52,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
       final workouts = await _databaseService.workouts.getWorkoutsByRoutine(
         widget.routine.id!,
       );
-      final stats = await _databaseService.routines.getRoutineStats(
-        widget.routine.id!,
-      );
 
       final orderedWorkouts = await _applyCustomOrder(workouts);
 
       if (mounted) {
         setState(() {
           _workouts = orderedWorkouts;
-          _stats = stats;
           _isLoading = false;
         });
         _animationController.forward();
@@ -127,11 +122,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? const Color(0xFF8B5A5A)
-            : const Color(0xFF5A8B5A),
+        backgroundColor: isError ? Colors.red[600] : Colors.green[600],
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -229,10 +222,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  widget.routine.isActive ? 'ATIVA' : 'INATIVA',
+                  widget.routine.isActive ? 'Ativa' : 'Inativa',
                   style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                     color: widget.routine.isActive
                         ? theme.colorScheme.onPrimaryContainer
                         : theme.colorScheme.onSurfaceVariant,
@@ -241,7 +234,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               ),
               const Spacer(),
               Text(
-                _formatDate(widget.routine.createdAt),
+                'Criada em ${_formatDate(widget.routine.createdAt)}',
                 style: TextStyle(
                   fontSize: 12,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -257,107 +250,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               widget.routine.description!,
               style: TextStyle(
                 fontSize: 14,
-                height: 1.4,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
-
-          // Stats
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.12),
-              ),
-            ),
-            child: Row(
-              children: [
-                _buildStatItem(
-                  '${_stats['workouts_count'] ?? 0}',
-                  'treinos',
-                  theme,
-                ),
-                Container(
-                  width: 1,
-                  height: 30,
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-                _buildStatItem(
-                  '${_stats['exercises_count'] ?? 0}',
-                  'exercícios',
-                  theme,
-                ),
-              ],
-            ),
-          ),
-
-          // Grupos musculares
-          if (_stats['muscle_groups'] != null &&
-              _stats['muscle_groups'].isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              'Grupos musculares',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: (_stats['muscle_groups'] as List).map<Widget>((group) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    group,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String value, String label, ThemeData theme) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
         ],
       ),
     );

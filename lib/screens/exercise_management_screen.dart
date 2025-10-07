@@ -91,7 +91,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
   Future<void> _deleteExercise(Exercise exercise) async {
     // Verificar se pode deletar
     final canDelete = await _databaseService.exercises.canDeleteExercise(exercise.id!);
-    
+
     if (!canDelete) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -175,11 +175,17 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text('Gerenciar Exercícios'),
-        backgroundColor: Colors.indigo[700],
-        foregroundColor: Colors.white,
+        title: Text('Gerenciar Exercícios',
+        style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),),
         actions: [
           IconButton(
             onPressed: _addExercise,
@@ -206,7 +212,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                   onChanged: (_) => _filterExercises(),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Filtro de categoria
                 SizedBox(
                   height: 40,
@@ -216,14 +222,14 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                     itemBuilder: (context, index) {
                       final category = _categories[index];
                       final isSelected = category == _selectedCategory;
-                      
+
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: FilterChip(
                           avatar: Icon(
                             _getCategoryIcon(category),
                             size: 18,
-                            color: isSelected 
+                            color: isSelected
                                 ? _getCategoryColor(category)
                                 : Colors.grey[600],
                           ),
@@ -238,7 +244,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                           selectedColor: _getCategoryColor(category).withOpacity(0.2),
                           checkmarkColor: _getCategoryColor(category),
                           labelStyle: TextStyle(
-                            color: isSelected 
+                            color: isSelected
                                 ? _getCategoryColor(category)
                                 : Colors.grey[700],
                           ),
@@ -250,7 +256,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
               ],
             ),
           ),
-          
+
           // Lista de exercícios
           Expanded(
             child: _isLoading
@@ -288,7 +294,7 @@ class _ExerciseManagementScreenState extends State<ExerciseManagementScreen> {
                         itemCount: _filteredExercises.length,
                         itemBuilder: (context, index) {
                           final exercise = _filteredExercises[index];
-                          
+
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(

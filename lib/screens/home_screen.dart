@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/database_service.dart';
 import '../models/routine.dart';
+import '../models/workout.dart';
 import 'create_routine_screen.dart';
+import 'create_workout_screen.dart';
+import 'workout_detail_screen.dart';
 import 'routine_detail_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/edit_routine_dialog.dart';
+import '../widgets/edit_workout_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Routine> _routines = [];
   bool _isLoading = true;
   bool _isReorderMode = false;
+
+  final Map<int, List<Workout>> _workoutsByRoutine = {};
+  final Set<int> _expandedRoutines = {}; // rotina.id
+  final Set<int> _loadingRoutineWorkouts = {}; // rotina.id carregando
 
   @override
   void initState() {
@@ -36,6 +44,81 @@ class _HomeScreenState extends State<HomeScreen> {
       _routines = orderedRoutines;
       _isLoading = false;
     });
+  }
+
+  Future<void> _toggleExpand(Routine routine) async {
+    final id = routine.id!;
+    if (_expandedRoutines.contains(id)) {
+      setState(() => _expandedRoutines.remove(id));
+      return;
+    }
+    setState(() {
+      _expandedRoutines.add(id);
+    });
+    if (!_workoutsByRoutine.containsKey(id)) {
+      await _loadWorkoutsForRoutine(id);
+    }
+  }
+
+  Future<void> _loadWorkoutsForRoutine(int routineId) async {
+    if (_loadingRoutineWorkouts.contains(routineId)) return;
+    setState(() => _loadingRoutineWorkouts.add(routineId));
+    try {
+      final workouts = await _databaseService.workouts.getWorkoutsByRoutine(
+        routineId,
+      );
+      final ordered = await _applyWorkoutOrder(routineId, workouts);
+      if (mounted) {
+        setState(() => _workoutsByRoutine[routineId] = ordered);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao carregar treinos: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingRoutineWorkouts.remove(routineId));
+      }
+    }
+  }
+
+  Future<List<Workout>> _applyWorkoutOrder(
+    int routineId,
+    List<Workout> workouts,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedOrder = prefs.getString('workout_order_$routineId');
+      if (savedOrder == null) return workouts;
+      final orderIds = List<int>.from(jsonDecode(savedOrder));
+      final ordered = <Workout>[];
+      for (final id in orderIds) {
+        final wIndex = workouts.indexWhere((w) => w.id == id);
+        if (wIndex != -1) ordered.add(workouts[wIndex]);
+      }
+      for (final w in workouts) {
+        if (!ordered.any((ow) => ow.id == w.id)) ordered.add(w);
+      }
+      return ordered;
+    } catch (_) {
+      return workouts;
+    }
+  }
+
+  Future<void> _refreshRoutineWorkouts(int routineId) async {
+    if (_expandedRoutines.contains(routineId)) {
+      await _loadWorkoutsForRoutine(routineId);
+    }
   }
 
   Future<List<Routine>> _applyCustomOrder(List<Routine> routines) async {
@@ -100,7 +183,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return PopScope(
       canPop: !_isReorderMode,
       onPopInvokedWithResult: (didPop, result) {
@@ -112,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: theme.colorScheme.background,
         appBar: AppBar(
           title: Text(
-            _isReorderMode ? 'Reordenar Rotinas' : 'Minhas Rotinas',
+            _isReorderMode ? 'Reordenar Rotinas' : 'Rotinas',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -135,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 icon: Icon(
                   Icons.reorder,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.onSurface,
                 ),
                 tooltip: 'Reordenar',
               ),
@@ -144,9 +226,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () async {
                   await _saveRoutineOrder();
                   _exitReorderMode();
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: const Text('Ordem salva')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Ordem salva'),
+                      backgroundColor: Colors.green[600],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
                 },
                 icon: Icon(Icons.check, color: theme.colorScheme.primary),
                 tooltip: 'Salvar',
@@ -194,6 +284,430 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.add),
                 label: const Text('Nova Rotina'),
               ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableRoutineCard(Routine routine, ThemeData theme) {
+    final expanded = _expandedRoutines.contains(routine.id);
+    final workouts = _workoutsByRoutine[routine.id ?? -1];
+    final isLoadingWorkouts = _loadingRoutineWorkouts.contains(routine.id);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 0,
+        color: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.colorScheme.outline.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              InkWell(
+                onTap: () => _toggleExpand(routine),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    routine.name,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                _buildStatusBadge(routine, theme),
+                              ],
+                            ),
+                            if (routine.description?.isNotEmpty == true) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                routine.description!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatDate(routine.createdAt),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (!expanded)
+                                  Text(
+                                    'Toque para ver treinos',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          _buildPopupMenu(routine, theme),
+                          const SizedBox(height: 4),
+                          Icon(
+                            expanded ? Icons.expand_less : Icons.expand_more,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: _buildExpandedRoutineContent(
+                  routine,
+                  workouts,
+                  isLoadingWorkouts,
+                  theme,
+                ),
+                crossFadeState: expanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 250),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedRoutineContent(
+    Routine routine,
+    List<Workout>? workouts,
+    bool isLoading,
+    ThemeData theme,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: theme.dividerColor.withOpacity(0.08)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                'Treinos',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (workouts != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${workouts.length}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Ver detalhes / reordenar',
+                icon: Icon(
+                  Icons.open_in_new,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          RoutineDetailScreen(routine: routine),
+                    ),
+                  ).then((_) => _loadRoutines());
+                },
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateWorkoutScreen(routine: routine),
+                    ),
+                  ).then((_) => _refreshRoutineWorkouts(routine.id!));
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Novo Treino'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (isLoading)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            )
+          else if (workouts == null || workouts.isEmpty)
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.fitness_center_outlined,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Nenhum treino ainda',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Crie seu primeiro treino para esta rotina',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: workouts.length,
+              itemBuilder: (context, index) {
+                final workout = workouts[index];
+                return _buildWorkoutInlineCard(routine, workout, index, theme);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkoutInlineCard(
+    Routine routine,
+    Workout workout,
+    int index,
+    ThemeData theme,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.08)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkoutDetailScreen(workout: workout),
+            ),
+          ).then((_) => _refreshRoutineWorkouts(routine.id!));
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withOpacity(0.15),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      workout.name,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    if (workout.description?.isNotEmpty == true) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        workout.description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuButton(
+                tooltip: 'Opções do treino',
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Editar')),
+                  PopupMenuItem(value: 'delete', child: Text('Excluir')),
+                ],
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    showDialog(
+                      context: context,
+                      builder: (c) => EditWorkoutDialog(
+                        workout: workout,
+                        onUpdated: () => _refreshRoutineWorkouts(routine.id!),
+                      ),
+                    );
+                  } else if (value == 'delete') {
+                    _confirmDeleteWorkout(routine, workout);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteWorkout(Routine routine, Workout workout) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Treino'),
+        content: Text('Excluir "${workout.name}" desta rotina?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                await _databaseService.workouts.deleteWorkout(workout.id!);
+                _refreshRoutineWorkouts(routine.id!);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Treino "${workout.name}" excluído'),
+                      backgroundColor: Colors.red[600],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao excluir treino: $e'),
+                      backgroundColor: Colors.red[600],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Excluir'),
+          ),
+        ],
       ),
     );
   }
@@ -378,87 +892,8 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: _routines.length,
         itemBuilder: (context, index) {
           final routine = _routines[index];
-          return _buildRoutineCard(routine, theme);
+          return _buildExpandableRoutineCard(routine, theme);
         },
-      ),
-    );
-  }
-
-  Widget _buildRoutineCard(Routine routine, ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        elevation: 0,
-        color: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.12),
-            width: 1,
-          ),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RoutineDetailScreen(routine: routine),
-              ),
-            ).then((_) => _loadRoutines());
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        routine.name,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    _buildPopupMenu(routine, theme),
-                  ],
-                ),
-                if (routine.description?.isNotEmpty == true) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    routine.description!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildStatusBadge(routine, theme),
-                    const Spacer(),
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 14,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(routine.createdAt),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -537,7 +972,15 @@ class _HomeScreenState extends State<HomeScreen> {
               _loadRoutines();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Rotina "${routine.name}" excluída!')),
+                  SnackBar(
+                    content: Text('Rotina "${routine.name}" excluída!'),
+                    backgroundColor: Colors.red[600],
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
                 );
               }
             },
