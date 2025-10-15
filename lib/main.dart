@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
-import 'providers/theme_provider.dart';
+import 'src/ui/screens/home_screen.dart';
+import 'src/ui/providers/theme_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
                 seedColor: Colors.indigo,
                 brightness: Brightness.dark,
               ).copyWith(
-                surface: const Color(0xFF121212), 
+                surface: const Color(0xFF121212),
                 background: const Color(0xFF121212),
               ),
               appBarTheme: const AppBarTheme(
