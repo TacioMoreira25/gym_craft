@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../data/services/database_service.dart';
+import 'package:provider/provider.dart';
 import '../../models/routine.dart';
 import '../../models/workout.dart';
 import '../../shared/utils/snackbar_utils.dart';
+import '../controllers/routine_detail_controller.dart';
 import 'create_workout_screen.dart';
 import 'workout_detail_screen.dart';
 import '../widgets/edit_workout_dialog.dart';
@@ -20,10 +19,6 @@ class RoutineDetailScreen extends StatefulWidget {
 
 class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     with SingleTickerProviderStateMixin {
-  final DatabaseService _databaseService = DatabaseService();
-  List<Workout> _workouts = [];
-  bool _isLoading = true;
-  bool _isReorderMode = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -37,7 +32,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _loadData();
   }
 
   @override
@@ -46,116 +40,69 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final workouts = await _databaseService.workouts.getWorkoutsByRoutine(
-        widget.routine.id!,
-      );
-
-      final orderedWorkouts = await _applyCustomOrder(workouts);
-
-      if (mounted) {
-        setState(() {
-          _workouts = orderedWorkouts;
-          _isLoading = false;
-        });
-        _animationController.forward();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        SnackBarUtils.showOperationError(
-          context,
-          'carregar dados',
-          e.toString(),
-        );
-      }
-    }
-  }
-
-  Future<List<Workout>> _applyCustomOrder(List<Workout> workouts) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? savedOrder = prefs.getString(
-        'workout_order_${widget.routine.id}',
-      );
-
-      if (savedOrder == null) return workouts;
-
-      List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
-      List<Workout> orderedWorkouts = [];
-
-      for (int id in orderIds) {
-        try {
-          Workout workout = workouts.firstWhere((w) => w.id == id);
-          orderedWorkouts.add(workout);
-        } catch (e) {
-          // Continue se não encontrar o workout
-        }
-      }
-
-      for (Workout workout in workouts) {
-        if (!orderedWorkouts.any((w) => w.id == workout.id)) {
-          orderedWorkouts.add(workout);
-        }
-      }
-
-      return orderedWorkouts;
-    } catch (e) {
-      return workouts;
-    }
-  }
-
-  Future<void> _saveWorkoutOrder() async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      List<int> workoutIds = _workouts.map((workout) => workout.id!).toList();
-      await prefs.setString(
-        'workout_order_${widget.routine.id}',
-        jsonEncode(workoutIds),
-      );
-    } catch (e) {
-      print('Erro ao salvar ordem dos treinos: $e');
-    }
-  }
-
-  void _exitReorderMode() => setState(() => _isReorderMode = false);
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return PopScope(
-      canPop: !_isReorderMode,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _isReorderMode) _exitReorderMode();
-      },
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.background,
-        appBar: _buildAppBar(theme),
-        body: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: theme.colorScheme.primary,
-                ),
-              )
-            : Column(
-                children: [
-                  if (!_isReorderMode) _buildHeaderSection(theme),
-                  Expanded(child: _buildWorkoutsSection(theme)),
-                ],
-              ),
-        floatingActionButton: !_isReorderMode ? _buildFAB() : null,
+    return ChangeNotifierProvider(
+      create: (context) =>
+          RoutineDetailController(routine: widget.routine)..loadData(),
+      child: _RoutineDetailView(
+        fadeAnimation: _fadeAnimation,
+        animationController: _animationController,
       ),
     );
   }
+}
 
-  AppBar _buildAppBar(ThemeData theme) {
+class _RoutineDetailView extends StatelessWidget {
+  final Animation<double> fadeAnimation;
+  final AnimationController animationController;
+
+  const _RoutineDetailView({
+    required this.fadeAnimation,
+    required this.animationController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<RoutineDetailController>(
+      builder: (context, controller, child) {
+        final theme = Theme.of(context);
+
+        // Iniciar animação quando os dados são carregados
+        if (!controller.isLoading && !animationController.isCompleted) {
+          animationController.forward();
+        }
+
+        return PopScope(
+          canPop: !controller.isReorderMode,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && controller.isReorderMode) {
+              controller.exitReorderMode();
+            }
+          },
+          child: Scaffold(
+            backgroundColor: theme.colorScheme.background,
+            appBar: _buildAppBar(context, controller, theme),
+            body: _buildBody(context, controller, theme),
+            floatingActionButton: !controller.isReorderMode
+                ? _buildFAB(context, controller)
+                : null,
+          ),
+        );
+      },
+    );
+  }
+
+  AppBar _buildAppBar(
+    BuildContext context,
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
     return AppBar(
       title: Text(
-        _isReorderMode ? 'Reordenar Treinos' : widget.routine.name,
+        controller.isReorderMode
+            ? 'Reordenar Treinos'
+            : controller.routine.name,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -164,31 +111,32 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
       ),
       backgroundColor: theme.colorScheme.surface,
       elevation: 0,
-      leading: _isReorderMode
+      leading: controller.isReorderMode
           ? IconButton(
               icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
-              onPressed: _exitReorderMode,
+              onPressed: () => controller.exitReorderMode(),
             )
           : IconButton(
               icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
-        if (!_isReorderMode && _workouts.isNotEmpty)
+        if (!controller.isReorderMode && controller.workouts.isNotEmpty)
           IconButton(
-            onPressed: () => setState(() => _isReorderMode = true),
+            onPressed: () => controller.enableReorderMode(),
             icon: Icon(
               Icons.reorder,
               color: theme.colorScheme.onSurfaceVariant,
             ),
             tooltip: 'Reordenar',
           ),
-        if (_isReorderMode)
+        if (controller.isReorderMode)
           IconButton(
             onPressed: () async {
-              await _saveWorkoutOrder();
-              _exitReorderMode();
-              SnackBarUtils.showSuccess(context, 'Ordem salva');
+              await controller.saveReorderAndExit();
+              if (context.mounted) {
+                SnackBarUtils.showSuccess(context, 'Ordem salva');
+              }
             },
             icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Salvar',
@@ -197,7 +145,53 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildHeaderSection(ThemeData theme) {
+  Widget _buildBody(
+    BuildContext context,
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
+    if (controller.isLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      );
+    }
+
+    if (controller.hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+            const SizedBox(height: 16),
+            Text(
+              controller.errorMessage!,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => controller.loadData(),
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (!controller.isReorderMode) _buildHeaderSection(controller, theme),
+        Expanded(child: _buildWorkoutsSection(context, controller, theme)),
+      ],
+    );
+  }
+
+  Widget _buildHeaderSection(
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
     return Container(
       margin: const EdgeInsets.all(20),
       child: Column(
@@ -209,17 +203,17 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: widget.routine.isActive
+                  color: controller.routine.isActive
                       ? theme.colorScheme.primaryContainer
                       : theme.colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  widget.routine.isActive ? 'Ativa' : 'Inativa',
+                  controller.routine.isActive ? 'Ativa' : 'Inativa',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: widget.routine.isActive
+                    color: controller.routine.isActive
                         ? theme.colorScheme.onPrimaryContainer
                         : theme.colorScheme.onSurfaceVariant,
                   ),
@@ -227,7 +221,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               ),
               const Spacer(),
               Text(
-                'Criada em ${_formatDate(widget.routine.createdAt)}',
+                'Criada em ${controller.formatDate(controller.routine.createdAt)}',
                 style: TextStyle(
                   fontSize: 12,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -237,10 +231,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           ),
 
           // Descrição
-          if (widget.routine.description?.isNotEmpty == true) ...[
+          if (controller.routine.description?.isNotEmpty == true) ...[
             const SizedBox(height: 12),
             Text(
-              widget.routine.description!,
+              controller.routine.description!,
               style: TextStyle(
                 fontSize: 14,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -252,30 +246,32 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutsSection(ThemeData theme) {
-    if (_workouts.isEmpty) {
+  Widget _buildWorkoutsSection(
+    BuildContext context,
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
+    if (controller.workouts.isEmpty) {
       return _buildEmptyState(theme);
     }
 
-    return _isReorderMode
-        ? _buildReorderableList(theme)
-        : _buildWorkoutsList(theme);
+    return controller.isReorderMode
+        ? _buildReorderableList(controller, theme)
+        : _buildWorkoutsList(context, controller, theme);
   }
 
-  Widget _buildReorderableList(ThemeData theme) {
+  Widget _buildReorderableList(
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ReorderableListView.builder(
-        itemCount: _workouts.length,
-        onReorder: (int oldIndex, int newIndex) {
-          setState(() {
-            if (newIndex > oldIndex) newIndex -= 1;
-            final item = _workouts.removeAt(oldIndex);
-            _workouts.insert(newIndex, item);
-          });
-        },
+        itemCount: controller.workouts.length,
+        onReorder: (int oldIndex, int newIndex) =>
+            controller.reorderWorkouts(oldIndex, newIndex),
         itemBuilder: (context, index) {
-          final workout = _workouts[index];
+          final workout = controller.workouts[index];
           return _buildReorderableWorkoutCard(workout, index, theme);
         },
       ),
@@ -376,14 +372,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutsList(ThemeData theme) {
+  Widget _buildWorkoutsList(
+    BuildContext context,
+    RoutineDetailController controller,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Treinos (${_workouts.length})',
+            'Treinos (${controller.workouts.length})',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -393,11 +393,17 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           const SizedBox(height: 12),
           Expanded(
             child: ListView.builder(
-              itemCount: _workouts.length,
+              itemCount: controller.workouts.length,
               itemBuilder: (context, index) {
                 return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: _buildWorkoutCard(_workouts[index], index, theme),
+                  opacity: fadeAnimation,
+                  child: _buildWorkoutCard(
+                    context,
+                    controller,
+                    controller.workouts[index],
+                    index,
+                    theme,
+                  ),
                 );
               },
             ),
@@ -407,7 +413,13 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildWorkoutCard(Workout workout, int index, ThemeData theme) {
+  Widget _buildWorkoutCard(
+    BuildContext context,
+    RoutineDetailController controller,
+    Workout workout,
+    int index,
+    ThemeData theme,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -425,7 +437,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
               MaterialPageRoute(
                 builder: (context) => WorkoutDetailScreen(workout: workout),
               ),
-            ).then((_) => _loadData());
+            ).then((_) => controller.loadData());
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -490,15 +502,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                   ),
                   onSelected: (value) {
                     if (value == 'edit') {
-                      showDialog(
-                        context: context,
-                        builder: (context) => EditWorkoutDialog(
-                          workout: workout,
-                          onUpdated: _loadData,
-                        ),
-                      );
+                      _showEditWorkoutDialog(context, controller, workout);
                     } else if (value == 'delete') {
-                      _showDeleteWorkoutDialog(workout);
+                      _showDeleteWorkoutDialog(context, controller, workout);
                     }
                   },
                   itemBuilder: (context) => [
@@ -588,21 +594,40 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
     );
   }
 
-  Widget _buildFAB() {
+  Widget _buildFAB(BuildContext context, RoutineDetailController controller) {
     return FloatingActionButton(
       onPressed: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CreateWorkoutScreen(routine: widget.routine),
+            builder: (context) =>
+                CreateWorkoutScreen(routine: controller.routine),
           ),
-        ).then((_) => _loadData());
+        ).then((_) => controller.loadData());
       },
       child: const Icon(Icons.add),
     );
   }
 
-  void _showDeleteWorkoutDialog(Workout workout) {
+  void _showEditWorkoutDialog(
+    BuildContext context,
+    RoutineDetailController controller,
+    Workout workout,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => EditWorkoutDialog(
+        workout: workout,
+        onUpdated: () => controller.loadData(),
+      ),
+    );
+  }
+
+  void _showDeleteWorkoutDialog(
+    BuildContext context,
+    RoutineDetailController controller,
+    Workout workout,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -618,18 +643,21 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              await _databaseService.workouts.deleteWorkout(workout.id!);
-              _loadData();
-              SnackBarUtils.showSuccess(context, 'Treino excluído');
+              try {
+                await controller.deleteWorkout(workout.id!);
+                if (context.mounted) {
+                  SnackBarUtils.showSuccess(context, 'Treino excluído');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  SnackBarUtils.showError(context, 'Erro ao excluir treino');
+                }
+              }
             },
             child: const Text('Excluir'),
           ),
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }

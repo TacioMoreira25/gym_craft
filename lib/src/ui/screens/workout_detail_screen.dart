@@ -1,36 +1,40 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../data/services/database_service.dart';
+import 'package:provider/provider.dart';
 import '../../models/workout.dart';
 import '../../models/exercise.dart';
 import '../../models/workout_exercise.dart';
-import '../../models/workout_series.dart';
-import '../../models/series_type.dart';
 import 'select_exercise_screen.dart';
 import '../widgets/add_workout_exercise_dialog.dart';
 import '../../shared/constants/constants.dart';
 import '../../shared/utils/snackbar_utils.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../controllers/workout_detail_controller.dart';
 
-class WorkoutDetailScreen extends StatefulWidget {
+class WorkoutDetailScreen extends StatelessWidget {
   final Workout workout;
 
   const WorkoutDetailScreen({super.key, required this.workout});
 
   @override
-  State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => WorkoutDetailController(workout: workout)..loadWorkoutExercises(),
+      child: const _WorkoutDetailView(),
+    );
+  }
 }
 
-class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
+class _WorkoutDetailView extends StatefulWidget {
+  const _WorkoutDetailView();
+
+  @override
+  State<_WorkoutDetailView> createState() => _WorkoutDetailViewState();
+}
+
+class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     with SingleTickerProviderStateMixin {
-  final DatabaseService _databaseService = DatabaseService();
-  List<WorkoutExercise> _workoutExercises = [];
-  bool _isLoading = true;
-  bool _isReorderMode = false;
   late AnimationController _animationController;
-  final Set<int> _expandedExercises = {};
 
   @override
   void initState() {
@@ -39,7 +43,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _loadWorkoutExercises();
+    _animationController.forward();
   }
 
   @override
@@ -48,274 +52,34 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     super.dispose();
   }
 
-  Future<void> _loadWorkoutExercises() async {
-    if (!mounted) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final exercises = await _databaseService.workoutExercises
-          .getWorkoutExercisesWithDetails(widget.workout.id!);
-
-      final orderedExercises = await _applyCustomOrder(exercises);
-
-      if (mounted) {
-        setState(() {
-          _workoutExercises = orderedExercises;
-          _isLoading = false;
-        });
-        _animationController.forward();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        SnackBarUtils.showOperationError(
-          context,
-          'carregar exercícios',
-          e.toString(),
-        );
-      }
-    }
-  }
-
-  Future<List<WorkoutExercise>> _applyCustomOrder(
-    List<WorkoutExercise> exercises,
-  ) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? savedOrder = prefs.getString(
-        'exercise_order_${widget.workout.id}',
-      );
-
-      if (savedOrder == null) {
-        return exercises;
-      }
-
-      List<int> orderIds = List<int>.from(jsonDecode(savedOrder));
-      List<WorkoutExercise> orderedExercises = [];
-
-      for (int id in orderIds) {
-        final exercise = exercises.where((e) => e.id == id).firstOrNull;
-        if (exercise != null) {
-          orderedExercises.add(exercise);
-        }
-      }
-
-      for (WorkoutExercise exercise in exercises) {
-        if (!orderedExercises.any((e) => e.id == exercise.id)) {
-          orderedExercises.add(exercise);
-        }
-      }
-
-      return orderedExercises;
-    } catch (e) {
-      return exercises;
-    }
-  }
-
-  Future<void> _saveExerciseOrder() async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      List<int> exerciseIds = _workoutExercises
-          .map((exercise) => exercise.id!)
-          .toList();
-      await prefs.setString(
-        'exercise_order_${widget.workout.id}',
-        jsonEncode(exerciseIds),
-      );
-    } catch (e) {
-      print('Erro ao salvar ordem dos exercícios: $e');
-    }
-  }
-
-  Future<void> _addExercise() async {
-    final Exercise? selectedExercise = await Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const SelectExerciseScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: animation.drive(
-              Tween(
-                begin: const Offset(1.0, 0.0),
-                end: Offset.zero,
-              ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-            ),
-            child: child,
-          );
-        },
-      ),
-    );
-
-    if (selectedExercise != null && mounted) {
-      await showDialog(
-        context: context,
-        builder: (context) => AddWorkoutExerciseDialog(
-          workoutId: widget.workout.id!,
-          selectedExercise: selectedExercise,
-          onExerciseAdded: () {
-            if (mounted) _loadWorkoutExercises();
-          },
-        ),
-      );
-    }
-  }
-
-  Future<void> _editWorkoutExercise(WorkoutExercise workoutExercise) async {
-    final exerciseData = {
-      'id': workoutExercise.id,
-      'workout_id': workoutExercise.workoutId,
-      'exercise_id': workoutExercise.exerciseId,
-      'order_index': workoutExercise.orderIndex,
-      'notes': workoutExercise.notes,
-      'created_at': workoutExercise.createdAt.millisecondsSinceEpoch,
-      'exercise_name': workoutExercise.exercise?.name ?? 'Exercício',
-      'category': workoutExercise.exercise?.category ?? '',
-      'description': workoutExercise.exercise?.description ?? '',
-      'instructions': workoutExercise.exercise?.instructions ?? '',
-      'image_url': workoutExercise.exercise?.imageUrl,
-    };
-
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (context) => EditWorkoutExerciseDialog(
-        workoutExerciseData: exerciseData,
-        onUpdated: () {},
-      ),
-    );
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    if (mounted) {
-      await _loadWorkoutExercises();
-      SnackBarUtils.showSuccess(context, 'Exercício atualizado com sucesso!');
-    }
-  }
-
-  void _deleteExercise(WorkoutExercise workoutExercise) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        final theme = Theme.of(context);
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.warning_rounded, color: Colors.orange[600], size: 28),
-              const SizedBox(width: 12),
-              const Text('Confirmar Exclusão'),
-            ],
-          ),
-          content: Text(
-            'Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?',
-            style: theme.textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _databaseService.workoutExercises.deleteWorkoutExercise(
-                  workoutExercise.id!,
-                );
-                if (mounted) {
-                  _loadWorkoutExercises();
-                  SnackBarUtils.showSuccess(
-                    context,
-                    'Exercício removido do treino!',
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Remover'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _exitReorderMode() {
-    setState(() => _isReorderMode = false);
-  }
-
-  bool _isValidText(String? text) {
-    if (text == null) return false;
-
-    final cleanText = text.replaceAll(
-      RegExp(r'[\s\u0000-\u001F\u007F-\u009F\uFEFF\u200B-\u200D\uFFF0-\uFFFF]'),
-      '',
-    );
-
-    return cleanText.isNotEmpty;
-  }
-
-  String _formatRestTime(int seconds) {
-    if (seconds < 60) {
-      return '${seconds}s';
-    } else {
-      final minutes = seconds ~/ 60;
-      final remainingSeconds = seconds % 60;
-      if (remainingSeconds == 0) {
-        return '${minutes}min';
-      } else {
-        return '${minutes}min ${remainingSeconds}s';
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return Consumer<WorkoutDetailController>(
+      builder: (context, controller, child) {
+        final theme = Theme.of(context);
 
-    return PopScope(
-      canPop: !_isReorderMode,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _isReorderMode) {
-          _exitReorderMode();
-        }
+        return PopScope(
+          canPop: !controller.isReorderMode,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && controller.isReorderMode) {
+              controller.exitReorderMode();
+            }
+          },
+          child: Scaffold(
+            backgroundColor: theme.colorScheme.background,
+            appBar: _buildAppBar(context, controller, theme),
+            body: _buildBody(context, controller, theme),
+            floatingActionButton: !controller.isReorderMode ? _buildFAB(context, controller) : null,
+          ),
+        );
       },
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.background,
-        appBar: _buildAppBar(theme),
-        body: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: theme.colorScheme.primary,
-                ),
-              )
-            : Column(
-                children: [
-                  if (!_isReorderMode) _buildHeaderSection(theme),
-                  Expanded(child: _buildExercisesSection(theme)),
-                ],
-              ),
-        floatingActionButton: !_isReorderMode ? _buildFAB() : null,
-      ),
     );
   }
 
-  AppBar _buildAppBar(ThemeData theme) {
+  AppBar _buildAppBar(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
     return AppBar(
       title: Text(
-        _isReorderMode ? 'Reordenar Exercícios' : widget.workout.name,
+        controller.isReorderMode ? 'Reordenar Exercícios' : controller.workout.name,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -324,31 +88,33 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
       ),
       backgroundColor: theme.colorScheme.surface,
       elevation: 0,
-      leading: _isReorderMode
+      leading: controller.isReorderMode
           ? IconButton(
               icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
-              onPressed: _exitReorderMode,
+              onPressed: () => controller.exitReorderMode(),
             )
           : IconButton(
               icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
-        if (!_isReorderMode && _workoutExercises.isNotEmpty)
+        if (!controller.isReorderMode && controller.hasExercises)
           IconButton(
-            onPressed: () => setState(() => _isReorderMode = true),
+            onPressed: () => controller.setReorderMode(true),
             icon: Icon(
               Icons.reorder,
               color: theme.colorScheme.onSurfaceVariant,
             ),
             tooltip: 'Reordenar',
           ),
-        if (_isReorderMode)
+        if (controller.isReorderMode)
           IconButton(
             onPressed: () async {
-              await _saveExerciseOrder();
-              _exitReorderMode();
-              SnackBarUtils.showSuccess(context, 'Ordem salva');
+              await controller.saveExerciseOrder();
+              controller.exitReorderMode();
+              if (context.mounted) {
+                SnackBarUtils.showSuccess(context, 'Ordem salva');
+              }
             },
             icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Salvar',
@@ -357,16 +123,61 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildHeaderSection(ThemeData theme) {
+  Widget _buildBody(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+    if (controller.isLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: theme.colorScheme.primary,
+        ),
+      );
+    }
+
+    if (controller.hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              controller.errorMessage!,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => controller.loadWorkoutExercises(),
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (!controller.isReorderMode) _buildHeaderSection(controller, theme),
+        Expanded(child: _buildExercisesSection(context, controller, theme)),
+      ],
+    );
+  }
+
+  Widget _buildHeaderSection(WorkoutDetailController controller, ThemeData theme) {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Descrição do treino
-          if (widget.workout.description?.isNotEmpty == true) ...[
+          if (controller.workout.description?.isNotEmpty == true) ...[
             Text(
-              widget.workout.description!,
+              controller.workout.description!,
               style: TextStyle(
                 fontSize: 14,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -388,13 +199,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
             child: Row(
               children: [
                 _buildStatItem(
-                  _workoutExercises.length.toString(),
+                  controller.workoutExercises.length.toString(),
                   'Exercícios',
                   theme,
                 ),
-                _buildStatItem(_getTotalSeries().toString(), 'Séries', theme),
+                _buildStatItem(controller.getTotalSeries().toString(), 'Séries', theme),
                 _buildStatItem(
-                  '${_calculateEstimatedTime()}min',
+                  '${controller.calculateEstimatedTime()}min',
                   'Tempo Est.',
                   theme,
                 ),
@@ -431,32 +242,26 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildExercisesSection(ThemeData theme) {
-    if (_workoutExercises.isEmpty) {
-      return _buildEmptyState();
+  Widget _buildExercisesSection(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+    if (!controller.hasExercises) {
+      return _buildEmptyState(theme);
     }
 
-    return _isReorderMode
-        ? _buildReorderableList(theme)
-        : _buildExercisesList(theme);
+    return controller.isReorderMode
+        ? _buildReorderableList(context, controller, theme)
+        : _buildExercisesList(context, controller, theme);
   }
 
-  Widget _buildReorderableList(ThemeData theme) {
+  Widget _buildReorderableList(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ReorderableListView.builder(
-        itemCount: _workoutExercises.length,
+        itemCount: controller.workoutExercises.length,
         onReorder: (int oldIndex, int newIndex) {
-          setState(() {
-            if (oldIndex < newIndex) {
-              newIndex -= 1;
-            }
-            final WorkoutExercise item = _workoutExercises.removeAt(oldIndex);
-            _workoutExercises.insert(newIndex, item);
-          });
+          controller.reorderExercises(oldIndex, newIndex);
         },
         itemBuilder: (context, index) {
-          final workoutExercise = _workoutExercises[index];
+          final workoutExercise = controller.workoutExercises[index];
           return _buildReorderableExerciseCard(
             workoutExercise,
             index,
@@ -468,14 +273,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildExercisesList(ThemeData theme) {
+  Widget _buildExercisesList(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Exercícios (${_workoutExercises.length})',
+            'Exercícios (${controller.workoutExercises.length})',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -485,10 +290,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
           const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
-              itemCount: _workoutExercises.length,
+              itemCount: controller.workoutExercises.length,
               itemBuilder: (context, index) {
                 return _buildModernExerciseCard(
-                  _workoutExercises[index],
+                  context,
+                  controller,
+                  controller.workoutExercises[index],
                   index,
                   theme,
                   false,
@@ -501,15 +308,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  Widget _buildFAB() {
+  Widget _buildFAB(BuildContext context, WorkoutDetailController controller) {
     return FloatingActionButton(
-      onPressed: _addExercise,
+      onPressed: () => _addExercise(context, controller),
       child: const Icon(Icons.add),
     );
   }
 
-  Widget _buildEmptyState() {
-    final theme = Theme.of(context);
+  Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -552,6 +358,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
   }
 
   Widget _buildModernExerciseCard(
+    BuildContext context,
+    WorkoutDetailController controller,
     WorkoutExercise workoutExercise,
     int index,
     ThemeData theme,
@@ -562,7 +370,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     final muscleGroupColor = AppConstants.getMuscleGroupColor(
       exercise?.category ?? 'Cardio',
     );
-    final isExpanded = _expandedExercises.contains(workoutExercise.id);
+    final isExpanded = controller.isExerciseExpanded(workoutExercise.id!);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -581,15 +389,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                setState(() {
-                  if (isExpanded) {
-                    _expandedExercises.remove(workoutExercise.id);
-                  } else {
-                    _expandedExercises.add(workoutExercise.id!);
-                  }
-                });
-              },
+              onTap: () => controller.toggleExerciseExpansion(workoutExercise.id!),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -728,10 +528,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                           onSelected: (value) {
                             switch (value) {
                               case 'edit':
-                                _editWorkoutExercise(workoutExercise);
+                                _editWorkoutExercise(context, controller, workoutExercise);
                                 break;
                               case 'delete':
-                                _deleteExercise(workoutExercise);
+                                _deleteExercise(context, controller, workoutExercise);
                                 break;
                             }
                           },
@@ -752,6 +552,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: _buildExpandedSeriesContent(
+              controller,
               workoutExercise,
               theme,
               isDark,
@@ -767,6 +568,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
   }
 
   Widget _buildExpandedSeriesContent(
+    WorkoutDetailController controller,
     WorkoutExercise workoutExercise,
     ThemeData theme,
     bool isDark,
@@ -845,7 +647,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            _buildSeriesText(s, sIndex + 1, typeName),
+                            controller.buildSeriesText(s, sIndex + 1, typeName),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
@@ -853,7 +655,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
                         ),
                       ],
                     ),
-                    if (_isValidText(s.notes)) ...[
+                    if (controller.isValidText(s.notes)) ...[
                       const SizedBox(height: 6),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -883,7 +685,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
             }).toList(),
           ],
 
-          if (_isValidText(workoutExercise.notes)) ...[
+          if (controller.isValidText(workoutExercise.notes)) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -1041,51 +843,123 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen>
     );
   }
 
-  String _buildSeriesText(
-    WorkoutSeries series,
-    int seriesNumber,
-    String typeName,
+  // Métodos de navegação e interação
+  Future<void> _addExercise(BuildContext context, WorkoutDetailController controller) async {
+    final Exercise? selectedExercise = await Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            SelectExerciseScreen(excludeExerciseIds: controller.getExistingExerciseIds()),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: animation.drive(
+              Tween(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+            ),
+            child: child,
+          );
+        },
+      ),
+    );
+
+    if (selectedExercise != null && context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => AddWorkoutExerciseDialog(
+          workoutId: controller.workout.id!,
+          selectedExercise: selectedExercise,
+          onExerciseAdded: () {
+            controller.loadWorkoutExercises();
+          },
+        ),
+      );
+    }
+  }
+
+  Future<void> _editWorkoutExercise(
+    BuildContext context,
+    WorkoutDetailController controller,
+    WorkoutExercise workoutExercise,
+  ) async {
+    final exerciseData = controller.prepareExerciseDataForEdit(workoutExercise);
+
+    if (!context.mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => EditWorkoutExerciseDialog(
+        workoutExerciseData: exerciseData,
+        onUpdated: () {},
+      ),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (context.mounted) {
+      await controller.loadWorkoutExercises();
+      SnackBarUtils.showSuccess(context, 'Exercício atualizado com sucesso!');
+    }
+  }
+
+  void _deleteExercise(
+    BuildContext context,
+    WorkoutDetailController controller,
+    WorkoutExercise workoutExercise,
   ) {
-    switch (series.type) {
-      case SeriesType.rest:
-        return ' ${_formatRestTime(series.restSeconds ?? 0)}';
-
-      case SeriesType.warmup:
-      case SeriesType.recognition:
-        return '${series.repetitions ?? 0} reps | ${_formatRestTime(series.restSeconds!)} pausa';
-
-      default:
-        String text = '${series.repetitions ?? 0} reps';
-        if (series.weight != null && series.weight! > 0) {
-          text += ' | ${series.weight}kg';
-        }
-        if (series.restSeconds != null && series.restSeconds! > 0) {
-          text += ' | ${_formatRestTime(series.restSeconds!)} pausa';
-        }
-        return text;
-    }
-  }
-
-  int _getTotalSeries() {
-    return _workoutExercises.fold<int>(0, (sum, ex) => sum + ex.series.length);
-  }
-
-  int _calculateEstimatedTime() {
-    int totalTime = 0;
-    for (final workoutExercise in _workoutExercises) {
-      final series = workoutExercise.series;
-
-      for (final s in series) {
-        if (s.type == SeriesType.rest) {
-          totalTime += s.restSeconds ?? 30;
-        } else {
-          totalTime += 30;
-          if (s.restSeconds != null) {
-            totalTime += s.restSeconds!;
-          }
-        }
-      }
-    }
-    return (totalTime / 60).ceil();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final theme = Theme.of(context);
+        
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.warning_rounded, color: Colors.orange[600], size: 28),
+              const SizedBox(width: 12),
+              const Text('Confirmar Exclusão'),
+            ],
+          ),
+          content: Text(
+            'Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?',
+            style: theme.textTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await controller.deleteExercise(workoutExercise);
+                if (context.mounted) {
+                  SnackBarUtils.showSuccess(
+                    context,
+                    'Exercício removido do treino!',
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Remover'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

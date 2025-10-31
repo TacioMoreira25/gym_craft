@@ -1,269 +1,325 @@
 import 'package:flutter/material.dart';
-import '../../data/services/database_service.dart';
+import 'package:provider/provider.dart';
 import '../../models/routine.dart';
-import '../../models/workout.dart';
-import '../../shared/constants/constants.dart';
+import '../../shared/utils/snackbar_utils.dart';
+import '../controllers/create_workout_controller.dart';
 
-class CreateWorkoutScreen extends StatefulWidget {
+class CreateWorkoutScreen extends StatelessWidget {
   final Routine routine;
 
   const CreateWorkoutScreen({super.key, required this.routine});
 
   @override
-  _CreateWorkoutScreenState createState() => _CreateWorkoutScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => CreateWorkoutController(routine: routine),
+      child: const _CreateWorkoutView(),
+    );
+  }
 }
 
-class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
-  final DatabaseService _databaseService = DatabaseService();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+class _CreateWorkoutView extends StatelessWidget {
+  const _CreateWorkoutView();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return Consumer<CreateWorkoutController>(
+      builder: (context, controller, child) {
+        final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Novo Treino'),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
-        elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: _saveWorkout,
-            child: Text(
-              'SALVAR',
-              style: TextStyle(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Novo Treino'),
+            backgroundColor: theme.colorScheme.surface,
+            foregroundColor: theme.colorScheme.onSurface,
+            elevation: 0,
+            actions: [
+              TextButton(
+                onPressed: controller.isLoading
+                    ? null
+                    : () => _saveWorkout(context, controller),
+                child: Text(
+                  'SALVAR',
+                  style: TextStyle(
+                    color: controller.isLoading
+                        ? theme.colorScheme.onSurface.withOpacity(0.5)
+                        : theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: controller.formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildRoutineInfo(controller, theme),
+                  const SizedBox(height: 20),
+                  _buildFormCard(context, controller, theme),
+                  const SizedBox(height: 20),
+                  _buildSuggestionsSection(controller, theme),
+                  const SizedBox(height: 32),
+                  _buildNextStepsCard(theme),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRoutineInfo(
+    CreateWorkoutController controller,
+    ThemeData theme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Adicionando treino para:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  controller.routine.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Informações da rotina pai
+    );
+  }
+
+  Widget _buildFormCard(
+    BuildContext context,
+    CreateWorkoutController controller,
+    ThemeData theme,
+  ) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Informações do Treino',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: controller.nameController,
+              decoration: InputDecoration(
+                labelText: 'Nome do Treino',
+                hintText: 'Ex: Treino A, Push, Peito e Tríceps',
+                prefixIcon: Icon(
+                  Icons.fitness_center_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nome é obrigatório';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: controller.descriptionController,
+              decoration: InputDecoration(
+                labelText: 'Descrição (opcional)',
+                hintText: 'Descreva o foco deste treino...',
+                prefixIcon: Icon(
+                  Icons.description_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              maxLines: 2,
+            ),
+            if (controller.hasError) ...[
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.12),
-                  ),
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outlined, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.error_outline,
+                      color: theme.colorScheme.onErrorContainer,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Adicionando treino para:',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            widget.routine.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Formulário do treino
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.12),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informações do Treino',
+                      child: Text(
+                        controller.errorMessage!,
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
+                          color: theme.colorScheme.onErrorContainer,
+                          fontSize: 14,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Nome do Treino',
-                          hintText: 'Ex: Treino A, Push, Peito e Tríceps',
-                          prefixIcon: Icon(
-                            Icons.fitness_center_outlined,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nome é obrigatório';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Descrição (opcional)',
-                          hintText: 'Descreva o foco deste treino...',
-                          prefixIcon: Icon(
-                            Icons.description_outlined,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Sugestões de nomes
-              Text(
-                'Sugestões de Nomes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: AppConstants.workoutSuggestions.map((suggestion) {
-                  return ActionChip(
-                    label: Text(suggestion),
-                    onPressed: () {
-                      _nameController.text = suggestion;
-                    },
-                    backgroundColor: theme.colorScheme.surfaceVariant
-                        .withOpacity(0.5),
-                    labelStyle: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    side: BorderSide.none,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 32),
-
-              // Próximos passos
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.12),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.lightbulb_outlined,
-                          color: theme.colorScheme.tertiary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Após salvar:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onTertiaryContainer,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Você poderá adicionar exercícios a este treino, definindo séries, repetições e peso para cada um.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: controller.isLoading
+                    ? null
+                    : () => _saveWorkout(context, controller),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: controller.isLoading
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Criar Treino',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _saveWorkout() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    try {
-      final workout = Workout(
-        routineId: widget.routine.id!,
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        createdAt: DateTime.now(),
-      );
-
-      await _databaseService.workouts.insertWorkout(workout);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Treino criado com sucesso!'),
-          backgroundColor: Colors.green,
+  Widget _buildSuggestionsSection(
+    CreateWorkoutController controller,
+    ThemeData theme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Sugestões de Nomes',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
-      );
-
-      Navigator.of(context).pop();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao salvar treino: $e'),
-          backgroundColor: Colors.red,
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: controller.workoutSuggestions.map((suggestion) {
+            return ActionChip(
+              label: Text(suggestion),
+              onPressed: () => controller.applySuggestion(suggestion),
+              backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(
+                0.5,
+              ),
+              labelStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              side: BorderSide.none,
+            );
+          }).toList(),
         ),
-      );
-    }
+      ],
+    );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  Widget _buildNextStepsCard(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outlined, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Text(
+                'Após salvar:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Você poderá adicionar exercícios a este treino, definindo séries, repetições e peso para cada um.',
+            style: TextStyle(
+              fontSize: 14,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveWorkout(
+    BuildContext context,
+    CreateWorkoutController controller,
+  ) async {
+    final success = await controller.saveWorkout();
+
+    if (success && context.mounted) {
+      SnackBarUtils.showSuccess(context, 'Treino criado com sucesso!');
+      Navigator.of(context).pop();
+    }
   }
 }

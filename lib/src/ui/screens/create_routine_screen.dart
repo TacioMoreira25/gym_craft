@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:gym_craft/src/models/series_type.dart';
-import '../../data/services/database_service.dart';
-import '../../models/routine.dart';
-import '../../shared/constants/constants.dart';
+import 'package:provider/provider.dart';
+import '../../shared/utils/snackbar_utils.dart';
+import '../controllers/create_routine_controller.dart';
 
 class CreateRoutineScreen extends StatefulWidget {
   const CreateRoutineScreen({super.key});
@@ -14,27 +12,9 @@ class CreateRoutineScreen extends StatefulWidget {
 
 class _CreateRoutineScreenState extends State<CreateRoutineScreen>
     with TickerProviderStateMixin {
-  final DatabaseService _databaseService = DatabaseService();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-
-  final List<String> _routineSuggestions = [
-    'Push Pull Legs',
-    'Upper Lower',
-    'Full Body',
-    'ABC Tradicional',
-    'ABCD Split',
-    'Ganho de Massa',
-    'Definição',
-    'Força',
-    'Iniciante',
-    'Avançado',
-  ];
 
   @override
   void initState() {
@@ -62,63 +42,90 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
   @override
   void dispose() {
     _animationController.dispose();
-    _nameController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => CreateRoutineController(),
+      child: _CreateRoutineView(
+        fadeAnimation: _fadeAnimation,
+        slideAnimation: _slideAnimation,
+      ),
+    );
+  }
+}
+
+class _CreateRoutineView extends StatelessWidget {
+  final Animation<double> fadeAnimation;
+  final Animation<Offset> slideAnimation;
+
+  const _CreateRoutineView({
+    required this.fadeAnimation,
+    required this.slideAnimation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.background,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _saveRoutine,
-            child: Text(
-              'SALVAR',
-              style: TextStyle(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
+    return Consumer<CreateRoutineController>(
+      builder: (context, controller, child) {
+        return Scaffold(
+          backgroundColor: theme.colorScheme.background,
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+              onPressed: () => Navigator.of(context).pop(),
             ),
+            actions: [
+              TextButton(
+                onPressed: controller.isLoading
+                    ? null
+                    : () => _saveRoutine(context, controller),
+                child: Text(
+                  'SALVAR',
+                  style: TextStyle(
+                    color: controller.isLoading
+                        ? theme.colorScheme.onSurface.withOpacity(0.5)
+                        : theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Container(
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(theme),
-                    const SizedBox(height: 24),
-                    _buildFormCard(theme),
-                    const SizedBox(height: 24),
-                    _buildSuggestionsSection(theme),
-                    const SizedBox(height: 24),
-                    _buildInfoCard(theme),
-                  ],
+          body: Container(
+            child: SafeArea(
+              child: FadeTransition(
+                opacity: fadeAnimation,
+                child: SlideTransition(
+                  position: slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(theme),
+                        const SizedBox(height: 24),
+                        _buildFormCard(context, controller, theme),
+                        const SizedBox(height: 24),
+                        _buildSuggestionsSection(controller, theme),
+                        const SizedBox(height: 24),
+                        _buildInfoCard(theme),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -162,7 +169,11 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
     );
   }
 
-  Widget _buildFormCard(ThemeData theme) {
+  Widget _buildFormCard(
+    BuildContext context,
+    CreateRoutineController controller,
+    ThemeData theme,
+  ) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -175,7 +186,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
-          key: _formKey,
+          key: controller.formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -198,7 +209,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
               ),
               const SizedBox(height: 24),
               TextFormField(
-                controller: _nameController,
+                controller: controller.nameController,
                 decoration: InputDecoration(
                   labelText: 'Nome da Rotina',
                   hintText: 'Ex: Push Pull Legs',
@@ -219,7 +230,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
               ),
               const SizedBox(height: 20),
               TextFormField(
-                controller: _descriptionController,
+                controller: controller.descriptionController,
                 decoration: InputDecoration(
                   labelText: 'Descrição (opcional)',
                   hintText: 'Descreva sua rotina...',
@@ -231,11 +242,42 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
                 maxLines: 3,
                 textInputAction: TextInputAction.done,
               ),
+              if (controller.hasError) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: theme.colorScheme.onErrorContainer,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          controller.errorMessage!,
+                          style: TextStyle(
+                            color: theme.colorScheme.onErrorContainer,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _saveRoutine,
+                  onPressed: controller.isLoading
+                      ? null
+                      : () => _saveRoutine(context, controller),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: theme.colorScheme.onPrimary,
@@ -244,10 +286,24 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Criar Rotina',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+                  child: controller.isLoading
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.onPrimary,
+                            ),
+                          ),
+                        )
+                      : const Text(
+                          'Criar Rotina',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -257,7 +313,10 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
     );
   }
 
-  Widget _buildSuggestionsSection(ThemeData theme) {
+  Widget _buildSuggestionsSection(
+    CreateRoutineController controller,
+    ThemeData theme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -282,24 +341,22 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _routineSuggestions.map((suggestion) {
-            return _buildSuggestionChip(suggestion, theme);
+          children: controller.routineSuggestions.map((suggestion) {
+            return _buildSuggestionChip(controller, suggestion, theme);
           }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildSuggestionChip(String suggestion, ThemeData theme) {
+  Widget _buildSuggestionChip(
+    CreateRoutineController controller,
+    String suggestion,
+    ThemeData theme,
+  ) {
     return ActionChip(
       label: Text(suggestion),
-      onPressed: () {
-        _nameController.text = suggestion;
-        if (_descriptionController.text.isEmpty) {
-          _descriptionController.text = _getDescriptionSuggestion(suggestion);
-        }
-        HapticFeedback.lightImpact();
-      },
+      onPressed: () => controller.applySuggestion(suggestion),
       backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
       labelStyle: TextStyle(
         color: theme.colorScheme.onSurfaceVariant,
@@ -395,117 +452,15 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen>
     );
   }
 
-  String _getDescriptionSuggestion(String routineName) {
-    switch (routineName) {
-      case 'Push Pull Legs':
-        return 'Rotina dividida em treinos de empurrar, puxar e pernas';
-      case 'Upper Lower':
-        return 'Divisão entre membros superiores e inferiores';
-      case 'Full Body':
-        return 'Treino completo trabalhando corpo todo';
-      case 'ABC Tradicional':
-        return 'Divisão clássica em três treinos diferentes';
-      case 'ABCD Split':
-        return 'Divisão em quatro treinos específicos';
-      case 'Ganho de Massa':
-        return 'Foco no desenvolvimento de massa muscular';
-      case 'Definição':
-        return 'Rotina voltada para definição e queima de gordura';
-      case 'Força':
-        return 'Treinamento focado no ganho de força';
-      case 'Iniciante':
-        return 'Rotina adequada para iniciantes';
-      case 'Avançado':
-        return 'Rotina para praticantes avançados';
-      default:
-        return 'Rotina personalizada de treinos';
-    }
-  }
+  Future<void> _saveRoutine(
+    BuildContext context,
+    CreateRoutineController controller,
+  ) async {
+    final success = await controller.saveRoutine();
 
-  Future<void> _saveRoutine() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: theme.colorScheme.primary),
-              const SizedBox(height: 16),
-              Text('Salvando rotina...', style: theme.textTheme.bodyMedium),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    try {
-      final routine = Routine(
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        createdAt: DateTime.now(),
-      );
-
-      await _databaseService.routines.insertRoutine(routine);
-
-      Navigator.of(context).pop(); // Close loading dialog
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('Rotina criada com sucesso!'),
-            ],
-          ),
-          backgroundColor: AppConstants.getSeriesTypeColor(
-            SeriesType.valid,
-            isDark: isDark,
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
+    if (success && context.mounted) {
+      SnackBarUtils.showSuccess(context, 'Rotina criada com sucesso!');
       Navigator.of(context).pop();
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_rounded, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(child: Text('Erro ao salvar rotina: $e')),
-            ],
-          ),
-          backgroundColor: theme.colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
     }
   }
 }
