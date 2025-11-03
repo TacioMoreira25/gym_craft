@@ -331,7 +331,6 @@ class _ExerciseManagementView extends StatelessWidget {
     );
   }
 
-  // Métodos de interação
   void _addExercise(
     BuildContext context,
     ExerciseManagementController controller,
@@ -364,7 +363,6 @@ class _ExerciseManagementView extends StatelessWidget {
     ExerciseManagementController controller,
     Exercise exercise,
   ) async {
-    // Verificar se pode deletar
     final canDelete = await controller.canDeleteExercise(exercise.id!);
 
     if (!context.mounted) return;
@@ -377,7 +375,6 @@ class _ExerciseManagementView extends StatelessWidget {
       return;
     }
 
-    // Confirmar exclusão
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

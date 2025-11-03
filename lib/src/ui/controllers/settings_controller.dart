@@ -19,8 +19,7 @@ class SettingsController extends BaseController {
   Future<void> performBackup() async {
     setLoading(true);
     try {
-      // TODO: Implementar backup real
-      await Future.delayed(const Duration(seconds: 1)); // Simular operação
+      await Future.delayed(const Duration(seconds: 1));
       setError('Funcionalidade de backup em desenvolvimento');
     } catch (e) {
       setError('Erro ao fazer backup: $e');
@@ -32,8 +31,7 @@ class SettingsController extends BaseController {
   Future<void> performReset() async {
     setLoading(true);
     try {
-      // TODO: Implementar reset real
-      await Future.delayed(const Duration(seconds: 1)); // Simular operação
+      await Future.delayed(const Duration(seconds: 1));
       setError('Funcionalidade de reset em desenvolvimento');
     } catch (e) {
       setError('Erro ao resetar dados: $e');

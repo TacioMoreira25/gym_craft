@@ -12,22 +12,8 @@ class ExerciseManagementController extends BaseController {
   String _selectedCategory = 'Todos';
   final TextEditingController _searchController = TextEditingController();
 
-  // Lista de categorias para os filtros
-  final List<String> categories = [
-    'Todos',
-    'Peito',
-    'Costas',
-    'Ombros',
-    'Bíceps',
-    'Tríceps',
-    'Pernas',
-    'Glúteos',
-    'Abdômen',
-    'Cardio',
-    'Funcional',
-  ];
+  List<String> get categories => ['Todos', ...AppConstants.muscleGroups];
 
-  // Getters
   List<Exercise> get exercises => _exercises;
   List<Exercise> get filteredExercises => _filteredExercises;
   String get selectedCategory => _selectedCategory;
@@ -41,7 +27,6 @@ class ExerciseManagementController extends BaseController {
     super.dispose();
   }
 
-  // Carregamento de dados
   Future<void> loadExercises() async {
     setLoading(true);
     try {
@@ -54,7 +39,6 @@ class ExerciseManagementController extends BaseController {
     }
   }
 
-  // Filtros e busca
   void setSelectedCategory(String category) {
     _selectedCategory = category;
     _applyFilters();
@@ -67,14 +51,12 @@ class ExerciseManagementController extends BaseController {
   void _applyFilters() {
     List<Exercise> filtered = _exercises;
 
-    // Filtro por categoria
     if (_selectedCategory != 'Todos') {
       filtered = filtered
           .where((exercise) => exercise.category == _selectedCategory)
           .toList();
     }
 
-    // Filtro por busca
     final searchText = _searchController.text.toLowerCase().trim();
     if (searchText.isNotEmpty) {
       filtered = filtered.where((exercise) {
@@ -92,7 +74,6 @@ class ExerciseManagementController extends BaseController {
     notifyListeners();
   }
 
-  // CRUD de exercícios
   Future<bool> canDeleteExercise(int exerciseId) async {
     try {
       return await _databaseService.exercises.canDeleteExercise(exerciseId);
@@ -111,7 +92,6 @@ class ExerciseManagementController extends BaseController {
     }
   }
 
-  // Utilitários
   Color getCategoryColor(String category) {
     if (category == 'Todos') {
       return Colors.indigo;
@@ -119,7 +99,6 @@ class ExerciseManagementController extends BaseController {
     return AppConstants.getMuscleGroupColor(category);
   }
 
-  // Callback para quando exercício for atualizado via dialog
   Future<void> onExerciseUpdated() async {
     await loadExercises();
   }

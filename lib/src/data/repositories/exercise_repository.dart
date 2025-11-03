@@ -66,12 +66,20 @@ class ExerciseRepository extends BaseRepository {
   Future<int> deleteExercise(int id) async {
     final canDelete = await canDeleteExercise(id);
     if (!canDelete) {
-      throw Exception('Não é possível excluir este exercício pois ele está sendo usado em treinos');
+      throw Exception(
+        'Não é possível excluir este exercício pois ele está sendo usado em treinos',
+      );
     }
     return await delete(id);
   }
 
-  Future<int> getOrCreateExercise(String name, String description, String category, {String? instructions, String? imageUrl}) async {
+  Future<int> getOrCreateExercise(
+    String name,
+    String description,
+    String category, {
+    String? instructions,
+    String? imageUrl,
+  }) async {
     Exercise? existing = await getExerciseByName(name);
 
     if (existing != null) {
@@ -84,7 +92,7 @@ class ExerciseRepository extends BaseRepository {
       category: category,
       instructions: instructions,
       createdAt: DateTime.now(),
-      isCustom: true,
+      isCustom: false,
       imageUrl: imageUrl,
     );
 
@@ -94,7 +102,7 @@ class ExerciseRepository extends BaseRepository {
   Future<List<String>> getAllCategories() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery(
-      'SELECT DISTINCT category FROM $tableName ORDER BY category ASC'
+      'SELECT DISTINCT category FROM $tableName ORDER BY category ASC',
     );
     return result.map((row) => row['category'] as String).toList();
   }
@@ -149,5 +157,10 @@ class ExerciseRepository extends BaseRepository {
       orderBy: 'name ASC',
     );
     return List.generate(maps.length, (i) => Exercise.fromMap(maps[i]));
+  }
+
+  Future<int> clearAllCustomFlags() async {
+    final db = await database;
+    return await db.update(tableName, {'is_custom': 0});
   }
 }

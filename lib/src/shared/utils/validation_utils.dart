@@ -142,21 +142,20 @@ class ValidationUtils {
 
   /// Valida URL de imagem
   static String? validateImageUrl(String? url) {
-    if (url == null || url.isEmpty) {
+    if (url == null || url.trim().isEmpty) {
       return null; // URL é opcional
     }
 
-    // Verificação básica de URL
-    final urlPattern = RegExp(
-      r'^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$',
-      caseSensitive: false,
-    );
+    final value = url.trim();
 
-    if (!urlPattern.hasMatch(url)) {
-      return 'URL deve terminar com .jpg, .png, .gif ou .webp';
+    final isHttp = value.startsWith('http://') || value.startsWith('https://');
+    final isDataImage = value.startsWith('data:image/');
+
+    if (isHttp || isDataImage) {
+      return null;
     }
 
-    return null;
+    return 'Informe uma URL válida iniciando com http:// ou https://';
   }
 
   /// Valida categoria de exercício
