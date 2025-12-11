@@ -111,7 +111,9 @@ class SeriesEditorController extends ChangeNotifier {
             field == 'rest_seconds';
       case SeriesType.warmup:
       case SeriesType.recognition:
-        return field == 'repetitions' || field == 'rest_seconds';
+        return field == 'repetitions' ||
+            field == 'rest_seconds' ||
+            field == 'weight';
       case SeriesType.rest:
         return field == 'rest_seconds';
     }

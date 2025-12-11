@@ -35,7 +35,6 @@ class ImageViewerDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header com título e botão fechar
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -62,10 +61,7 @@ class ImageViewerDialog extends StatelessWidget {
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close,
-                      color: Colors.black54,
-                    ),
+                    icon: const Icon(Icons.close, color: Colors.black54),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -76,8 +72,7 @@ class ImageViewerDialog extends StatelessWidget {
                 ],
               ),
             ),
-            
-            // Imagem expandida
+
             Flexible(
               child: Container(
                 width: double.infinity,
@@ -94,25 +89,17 @@ class ImageViewerDialog extends StatelessWidget {
                 ),
               ),
             ),
-            
-            // Dica de uso
+
             Container(
               padding: const EdgeInsets.all(16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.zoom_in,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
+                  Icon(Icons.zoom_in, size: 16, color: Colors.grey.shade600),
                   const SizedBox(width: 8),
                   Text(
                     'Pinça para fazer zoom • Arraste para mover',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -143,10 +130,7 @@ class ImageViewerDialog extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Imagem não disponível',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
           ],
         ),
@@ -185,18 +169,11 @@ class ImageViewerDialog extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.broken_image,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
+            Icon(Icons.broken_image, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
               'Erro ao carregar imagem',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
           ],
         ),
@@ -214,10 +191,8 @@ class ImageViewerDialog extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black87,
-      builder: (context) => ImageViewerDialog(
-        imageUrl: imageUrl,
-        exerciseName: exerciseName,
-      ),
+      builder: (context) =>
+          ImageViewerDialog(imageUrl: imageUrl, exerciseName: exerciseName),
     );
   }
 }

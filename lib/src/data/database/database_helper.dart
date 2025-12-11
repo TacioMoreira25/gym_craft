@@ -57,4 +57,44 @@ class DatabaseHelper {
       rethrow;
     }
   }
+
+  Future<List<Map<String, dynamic>>> getExerciseHistory(int exerciseId) async {
+    final db = await database;
+    return await db.rawQuery(
+      '''
+      SELECT
+        ws.created_at,
+        ws.weight
+      FROM series ws
+      JOIN workout_exercises we ON ws.workout_exercise_id = we.id
+      WHERE we.exercise_id = ?
+      AND ws.weight IS NOT NULL
+      AND ws.weight > 0
+      AND ws.type = 'valid'
+      ORDER BY ws.created_at ASC
+      LIMIT 20
+    ''',
+      [exerciseId],
+    );
+  }
+
+  Future<void> updateSeries(
+    int seriesId,
+    double weight,
+    int reps,
+    bool isDone,
+    String type, {
+    int? restSeconds,
+  }) async {
+    final db = await database;
+    final Map<String, dynamic> values = {
+      'weight': weight,
+      'repetitions': reps,
+      'type': type,
+    };
+    if (restSeconds != null) {
+      values['rest_seconds'] = restSeconds;
+    }
+    await db.update('series', values, where: 'id = ?', whereArgs: [seriesId]);
+  }
 }

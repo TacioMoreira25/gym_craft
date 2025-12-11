@@ -42,7 +42,10 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, EditWorkoutExerciseController controller) {
+  Widget _buildHeader(
+    BuildContext context,
+    EditWorkoutExerciseController controller,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -68,7 +71,6 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Textos
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +101,10 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, EditWorkoutExerciseController controller) {
+  Widget _buildContent(
+    BuildContext context,
+    EditWorkoutExerciseController controller,
+  ) {
     return Expanded(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -156,7 +161,9 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
                 )
               else
                 SeriesEditorWidget(
-                  key: ValueKey('series_editor_${controller.workoutExerciseId}'),
+                  key: ValueKey(
+                    'series_editor_${controller.workoutExerciseId}',
+                  ),
                   initialSeries: controller.series,
                   workoutExerciseId: controller.workoutExerciseId,
                   onSeriesChanged: controller.onSeriesChanged,
@@ -168,7 +175,10 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context, EditWorkoutExerciseController controller) {
+  Widget _buildActions(
+    BuildContext context,
+    EditWorkoutExerciseController controller,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -202,10 +212,7 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: controller.isSaving
                 ? const SizedBox(
@@ -213,9 +220,7 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
                 : const Text('Salvar'),
@@ -225,9 +230,12 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     );
   }
 
-  Future<void> _updateExercise(BuildContext context, EditWorkoutExerciseController controller) async {
+  Future<void> _updateExercise(
+    BuildContext context,
+    EditWorkoutExerciseController controller,
+  ) async {
     final success = await controller.updateWorkoutExercise();
-    
+
     if (context.mounted) {
       if (success) {
         Navigator.of(context).pop();

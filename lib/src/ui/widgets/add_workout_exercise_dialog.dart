@@ -77,7 +77,6 @@ class AddWorkoutExerciseDialog extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Textos
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

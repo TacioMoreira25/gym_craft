@@ -9,7 +9,10 @@ import '../../shared/constants/constants.dart';
 import '../../shared/utils/snackbar_utils.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../widgets/progression_chart.dart';
+import '../../data/database/database_helper.dart';
 import '../controllers/workout_detail_controller.dart';
+import 'workout_execution_screen.dart';
 
 class WorkoutDetailScreen extends StatelessWidget {
   final Workout workout;
@@ -19,7 +22,8 @@ class WorkoutDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => WorkoutDetailController(workout: workout)..loadWorkoutExercises(),
+      create: (context) =>
+          WorkoutDetailController(workout: workout)..loadWorkoutExercises(),
       child: const _WorkoutDetailView(),
     );
   }
@@ -69,17 +73,54 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             backgroundColor: theme.colorScheme.background,
             appBar: _buildAppBar(context, controller, theme),
             body: _buildBody(context, controller, theme),
-            floatingActionButton: !controller.isReorderMode ? _buildFAB(context, controller) : null,
+            floatingActionButton:
+                !controller.isReorderMode && controller.hasExercises
+                ? FloatingActionButton.extended(
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => WorkoutExecutionScreen(
+                            workoutName: controller.workout.name,
+                            exercises: controller.workoutExercises,
+                          ),
+                        ),
+                      );
+                      // Recarrega os dados ao voltar do treino para atualizar pesos/reps
+                      controller.loadWorkoutExercises();
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text(
+                      "INICIAR",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  )
+                : (!controller.isReorderMode && !controller.hasExercises
+                      ? FloatingActionButton(
+                          onPressed: () => _addExercise(context, controller),
+                          child: const Icon(Icons.add),
+                        )
+                      : null),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
           ),
         );
       },
     );
   }
 
-  AppBar _buildAppBar(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+  AppBar _buildAppBar(
+    BuildContext context,
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     return AppBar(
       title: Text(
-        controller.isReorderMode ? 'Reordenar Exercícios' : controller.workout.name,
+        controller.isReorderMode
+            ? 'Reordenar Exercícios'
+            : controller.workout.name,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -98,7 +139,12 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
-        if (!controller.isReorderMode && controller.hasExercises)
+        if (!controller.isReorderMode && controller.hasExercises) ...[
+          IconButton(
+            onPressed: () => _addExercise(context, controller),
+            icon: const Icon(Icons.add),
+            tooltip: 'Adicionar Exercício',
+          ),
           IconButton(
             onPressed: () => controller.setReorderMode(true),
             icon: Icon(
@@ -107,6 +153,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             ),
             tooltip: 'Reordenar',
           ),
+        ],
         if (controller.isReorderMode)
           IconButton(
             onPressed: () async {
@@ -123,12 +170,14 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     );
   }
 
-  Widget _buildBody(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+  Widget _buildBody(
+    BuildContext context,
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     if (controller.isLoading) {
       return Center(
-        child: CircularProgressIndicator(
-          color: theme.colorScheme.primary,
-        ),
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
@@ -137,11 +186,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
               controller.errorMessage!,
@@ -168,13 +213,15 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     );
   }
 
-  Widget _buildHeaderSection(WorkoutDetailController controller, ThemeData theme) {
+  Widget _buildHeaderSection(
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Descrição do treino
           if (controller.workout.description?.isNotEmpty == true) ...[
             Text(
               controller.workout.description!,
@@ -186,7 +233,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             const SizedBox(height: 12),
           ],
 
-          // Stats compactas
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -203,7 +249,11 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                   'Exercícios',
                   theme,
                 ),
-                _buildStatItem(controller.getTotalSeries().toString(), 'Séries', theme),
+                _buildStatItem(
+                  controller.getTotalSeries().toString(),
+                  'Séries',
+                  theme,
+                ),
                 _buildStatItem(
                   '${controller.calculateEstimatedTime()}min',
                   'Tempo Est.',
@@ -242,7 +292,11 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     );
   }
 
-  Widget _buildExercisesSection(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+  Widget _buildExercisesSection(
+    BuildContext context,
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     if (!controller.hasExercises) {
       return _buildEmptyState(theme);
     }
@@ -252,7 +306,11 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
         : _buildExercisesList(context, controller, theme);
   }
 
-  Widget _buildReorderableList(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+  Widget _buildReorderableList(
+    BuildContext context,
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ReorderableListView.builder(
@@ -273,7 +331,11 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     );
   }
 
-  Widget _buildExercisesList(BuildContext context, WorkoutDetailController controller, ThemeData theme) {
+  Widget _buildExercisesList(
+    BuildContext context,
+    WorkoutDetailController controller,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       child: Column(
@@ -298,20 +360,15 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                   controller.workoutExercises[index],
                   index,
                   theme,
-                  false,
+                  // Ajuste: usar o tema do contexto para decidir isDark se necessário,
+                  // ou passar uma flag baseada em theme.brightness
+                  theme.brightness == Brightness.dark,
                 );
               },
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFAB(BuildContext context, WorkoutDetailController controller) {
-    return FloatingActionButton(
-      onPressed: () => _addExercise(context, controller),
-      child: const Icon(Icons.add),
     );
   }
 
@@ -389,7 +446,8 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => controller.toggleExerciseExpansion(workoutExercise.id!),
+              onTap: () =>
+                  controller.toggleExerciseExpansion(workoutExercise.id!),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -434,21 +492,31 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            exercise?.name ?? 'Exercício',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.grey[800],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
-                              Expanded(
-                                child: Text(
-                                  exercise?.name ?? 'Exercício',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.grey[800],
+                              if ((exercise?.category ?? '').isNotEmpty)
+                                Text(
+                                  exercise?.category ?? '',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontSize: 11,
                                   ),
                                 ),
-                              ),
-                              if (series.isNotEmpty) ...[
+                              if ((exercise?.category ?? '').isNotEmpty &&
+                                  series.isNotEmpty)
+                                const SizedBox(width: 8),
+                              if (series.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
@@ -465,25 +533,33 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                                     ),
                                   ),
                                 ),
-                              ],
                             ],
                           ),
-                          if ((exercise?.category ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              exercise?.category ?? '',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.insights_rounded,
+                            color: theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                          tooltip: 'Ver Progresso',
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              isScrollControlled: true,
+                              builder: (context) => _buildProgressionSheet(
+                                context,
+                                workoutExercise,
+                              ),
+                            );
+                          },
+                        ),
                         PopupMenuButton(
                           icon: Icon(
                             Icons.more_vert_rounded,
@@ -528,10 +604,18 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                           onSelected: (value) {
                             switch (value) {
                               case 'edit':
-                                _editWorkoutExercise(context, controller, workoutExercise);
+                                _editWorkoutExercise(
+                                  context,
+                                  controller,
+                                  workoutExercise,
+                                );
                                 break;
                               case 'delete':
-                                _deleteExercise(context, controller, workoutExercise);
+                                _deleteExercise(
+                                  context,
+                                  controller,
+                                  workoutExercise,
+                                );
                                 break;
                             }
                           },
@@ -597,62 +681,136 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             ),
             const SizedBox(height: 8),
             ...series.asMap().entries.map((entry) {
-              final sIndex = entry.key;
               final s = entry.value;
-              final typeColor = AppConstants.getSeriesTypeColor(s.type);
-              final typeName = AppConstants.getSeriesTypeName(s.type);
+              final typeColor =
+                  AppConstants.seriesTypeColors[s.type] ??
+                  theme.colorScheme.primary;
+              final typeName = s.type.displayName;
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(
-                    isDark ? 0.1 : 0.4,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: typeColor.withOpacity(0.6),
-                    width: 1,
-                  ),
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.transparent, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        typeName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: typeColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            shape: BoxShape.circle,
                             border: Border.all(
-                              color: typeColor.withOpacity(0.7),
+                              color: theme.colorScheme.outlineVariant,
                             ),
-                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '${sIndex + 1}ª  $typeName',
+                            "${s.seriesNumber}",
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: typeColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         Expanded(
-                          child: Text(
-                            controller.buildSeriesText(s, sIndex + 1, typeName),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                "${s.weight?.toStringAsFixed(s.weight!.truncateToDouble() == s.weight ? 0 : 1) ?? '--'}",
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                "kg",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                "${s.repetitions ?? '--'}",
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                "reps",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (s.restSeconds != null &&
+                                  s.restSeconds! > 0) ...[
+                                Container(
+                                  width: 1,
+                                  height: 16,
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.timer_outlined,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  s.restSeconds! >= 60
+                                      ? "${s.restSeconds! ~/ 60}:${(s.restSeconds! % 60).toString().padLeft(2, '0')} min"
+                                      : "${s.restSeconds}s",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (s.restSeconds! >= 60)
+                                  const Text(
+                                    " pausa",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ],
                           ),
                         ),
+                        const SizedBox(width: 16),
+                        Container(width: 24, height: 24),
                       ],
                     ),
                     if (controller.isValidText(s.notes)) ...[
@@ -843,12 +1001,106 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     );
   }
 
+  Widget _buildProgressionSheet(
+    BuildContext context,
+    WorkoutExercise workoutExercise,
+  ) {
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.85,
+      builder: (_, controller) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: ListView(
+            controller: controller,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Seu Progresso",
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Histórico de cargas para ${workoutExercise.exercise?.name}",
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+
+              if (workoutExercise.exercise?.id != null)
+                FutureBuilder<List<ProgressionPoint>>(
+                  future: _loadHistory(workoutExercise.exercise!.id!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const SizedBox(
+                        height: 100,
+                        child: Center(
+                          child: Text("Sem dados históricos ainda."),
+                        ),
+                      );
+                    }
+                    return ProgressionChart(
+                      data: snapshot.data!,
+                      height: 200,
+                      textColor: theme.colorScheme.onSurface,
+                      color: theme.colorScheme.primary,
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<ProgressionPoint>> _loadHistory(int exerciseId) async {
+    final rawData = await DatabaseHelper().getExerciseHistory(exerciseId);
+    return rawData.map((row) {
+      DateTime date;
+      if (row['created_at'] is int) {
+        date = DateTime.fromMillisecondsSinceEpoch(row['created_at']);
+      } else {
+        date = DateTime.parse(row['created_at'].toString());
+      }
+      return ProgressionPoint(
+        date: date,
+        weight: (row['weight'] as num).toDouble(),
+      );
+    }).toList();
+  }
+
   // Métodos de navegação e interação
-  Future<void> _addExercise(BuildContext context, WorkoutDetailController controller) async {
+  Future<void> _addExercise(
+    BuildContext context,
+    WorkoutDetailController controller,
+  ) async {
     final Exercise? selectedExercise = await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            SelectExerciseScreen(excludeExerciseIds: controller.getExistingExerciseIds()),
+            SelectExerciseScreen(
+              excludeExerciseIds: controller.getExistingExerciseIds(),
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: animation.drive(
@@ -898,7 +1150,9 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
 
     if (context.mounted) {
       await controller.loadWorkoutExercises();
-      SnackBarUtils.showSuccess(context, 'Exercício atualizado com sucesso!');
+      if (context.mounted) {
+        SnackBarUtils.showSuccess(context, 'Exercício atualizado com sucesso!');
+      }
     }
   }
 
@@ -909,9 +1163,9 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
   ) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        final theme = Theme.of(context);
-        
+      builder: (BuildContext dialogContext) {
+        final theme = Theme.of(dialogContext);
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -929,7 +1183,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               style: TextButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -939,7 +1193,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
                 await controller.deleteExercise(workoutExercise);
                 if (context.mounted) {
                   SnackBarUtils.showSuccess(
