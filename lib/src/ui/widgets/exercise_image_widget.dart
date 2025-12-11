@@ -9,8 +9,8 @@ class ExerciseImageWidget extends StatelessWidget {
   final double height;
   final String? category;
   final BorderRadius? borderRadius;
-  final bool enableTap; // Novo parâmetro
-  final String? exerciseName; // Novo parâmetro
+  final bool enableTap;
+  final String? exerciseName;
 
   const ExerciseImageWidget({
     super.key,
@@ -19,8 +19,8 @@ class ExerciseImageWidget extends StatelessWidget {
     this.height = 60,
     this.category,
     this.borderRadius,
-    this.enableTap = false, // Padrão é desabilitado agora
-    this.exerciseName, // Nome do exercício para o dialog
+    this.enableTap = false,
+    this.exerciseName,
   });
 
   Color _getCategoryColor(String? category) {
@@ -55,7 +55,6 @@ class ExerciseImageWidget extends StatelessWidget {
   }
 
   Widget _buildImageWidget() {
-    // Se não há URL de imagem, mostrar fallback
     if (imageUrl == null || imageUrl!.isEmpty) {
       return _buildFallbackWidget();
     }
@@ -79,7 +78,6 @@ class ExerciseImageWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget imageWidget = _buildImageWidget();
 
-    // Se enableTap for true e tiver imageUrl válida, envolver com GestureDetector
     if (enableTap && imageUrl != null && imageUrl!.isNotEmpty) {
       return GestureDetector(
         onTap: () {

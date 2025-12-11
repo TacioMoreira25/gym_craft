@@ -208,10 +208,6 @@ class WorkoutDetailController extends BaseController {
       case SeriesType.rest:
         return ' ${formatRestTime(series.restSeconds ?? 0)}';
 
-      case SeriesType.warmup:
-      case SeriesType.recognition:
-        return '${series.repetitions ?? 0} reps | ${formatRestTime(series.restSeconds!)} pausa';
-
       default:
         String text = '${series.repetitions ?? 0} reps';
         if (series.weight != null && series.weight! > 0) {
