@@ -30,7 +30,6 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return PopScope(
       canPop: false,
@@ -46,11 +45,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
         body: SafeArea(
           child: Column(
             children: [
+              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -78,12 +75,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                 ),
               ),
 
+              // Conteúdo (Cards dos Exercícios)
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
                   itemCount: widget.exercises.length + 1,
-                  onPageChanged: (index) =>
-                      setState(() => _currentIndex = index),
+                  onPageChanged: (index) => setState(() => _currentIndex = index),
                   itemBuilder: (context, index) {
                     if (index == widget.exercises.length) {
                       return _buildFinishScreen(theme);
@@ -107,12 +104,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           builder: (context) => AlertDialog(
             title: const Text("Sair do Treino?"),
             content: const Text(
-              "Você realizou alterações ou progresso. Deseja sair e salvar?",
+              "Se sair agora, o progresso marcado será salvo, mas o treino não será finalizado. Deseja sair?",
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text("Continuar"),
+                child: const Text("Continuar Treinando"),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
@@ -156,7 +153,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            "Você completou todos os exercícios.",
+            "Bom trabalho! Descanso merecido.",
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -168,10 +165,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             label: const Text("Concluir e Sair"),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -218,6 +212,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     ],
                   ),
                 ),
+                // Botão de Insights (Gráfico) - Mantido, pois é opcional e útil
                 IconButton(
                   icon: const Icon(Icons.insights_rounded),
                   tooltip: "Ver Progresso",
@@ -231,7 +226,6 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             ),
           ),
 
-          // Image (Normal)
           if (exercise?.imageUrl != null)
             Container(
               height: 200,
@@ -250,22 +244,29 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               ),
             ),
 
-          // Series List
+          // Lista de Séries
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: ListView(
                 children: [
-                  if (workoutExercise.notes != null &&
-                      workoutExercise.notes!.isNotEmpty)
+                  if (workoutExercise.notes != null && workoutExercise.notes!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        workoutExercise.notes!,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                          fontSize: 13,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                        ),
+                        child: Text(
+                          "Nota: ${workoutExercise.notes}",
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -277,10 +278,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                   const SizedBox(height: 20),
                   Center(
                     child: Text(
-                      "Toque no peso para editar",
+                      "Toque no peso para editar • Toque no check para concluir",
                       style: TextStyle(
                         fontSize: 10,
-                        color: theme.colorScheme.onSurface.withOpacity(0.2),
+                        color: theme.colorScheme.onSurface.withOpacity(0.3),
                       ),
                     ),
                   ),
@@ -296,10 +297,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
   Widget _buildSeriesRow(WorkoutSeries series, ThemeData theme) {
     final isDone = _completedSeriesIds.contains(series.id);
     final typeName = series.type.displayName;
-    final typeColor =
-        AppConstants.seriesTypeColors[series.type] ?? theme.colorScheme.primary;
+    final typeColor = AppConstants.seriesTypeColors[series.type] ?? theme.colorScheme.primary;
 
     return GestureDetector(
+      // Toque no card abre edição
       onTap: () => _showEditDialog(series),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -307,19 +308,18 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isDone
-              ? theme.colorScheme.primaryContainer.withOpacity(0.2)
+              ? theme.colorScheme.primaryContainer.withOpacity(0.15)
               : theme.colorScheme.surfaceVariant.withOpacity(0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDone
-                ? theme.colorScheme.primary.withOpacity(0.5)
-                : Colors.transparent,
-            width: 1,
+            color: isDone ? theme.colorScheme.primary.withOpacity(0.3) : Colors.transparent,
+            width: 1.5,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Tipo da Série (Aquecimento, Válida, etc)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
@@ -334,19 +334,16 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             ),
             Row(
               children: [
+                // Número da Série
                 Container(
                   width: 28,
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isDone
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.surface,
+                    color: isDone ? theme.colorScheme.primary : theme.colorScheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isDone
-                          ? Colors.transparent
-                          : theme.colorScheme.outlineVariant,
+                      color: isDone ? Colors.transparent : theme.colorScheme.outlineVariant,
                     ),
                   ),
                   child: Text(
@@ -354,13 +351,13 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: isDone
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurface,
+                      color: isDone ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
+
+                // Dados (Peso e Reps)
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -368,41 +365,29 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     children: [
                       Text(
                         "${series.weight?.toStringAsFixed(series.weight!.truncateToDouble() == series.weight ? 0 : 1) ?? '--'}",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
-                        "kg",
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
+                      const Text("kg", style: TextStyle(fontSize: 12, color: Colors.grey)),
+
                       const Spacer(),
+
                       Text(
                         "${series.repetitions ?? '--'}",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
-                        "reps",
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
+                      const Text("reps", style: TextStyle(fontSize: 12, color: Colors.grey)),
+
                       const Spacer(),
-                      if (series.restSeconds != null &&
-                          series.restSeconds! > 0) ...[
-                        Container(
-                          width: 1,
-                          height: 16,
-                          color: theme.colorScheme.outlineVariant,
-                        ),
+
+                      // Tempo de descanso
+                      if (series.restSeconds != null && series.restSeconds! > 0) ...[
+                        Container(width: 1, height: 16, color: theme.colorScheme.outlineVariant),
                         const Spacer(),
                         Text(
                           series.restSeconds! >= 60
-                              ? "${series.restSeconds! ~/ 60}:${(series.restSeconds! % 60).toString().padLeft(2, '0')} min"
+                              ? "${series.restSeconds! ~/ 60}m ${(series.restSeconds! % 60)}s"
                               : "${series.restSeconds}s",
                           style: TextStyle(
                             fontSize: 12,
@@ -411,37 +396,31 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                           ),
                         ),
                         if (series.restSeconds! >= 60)
-                          const Text(
-                            " pausa",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                          const Text(" pausa", style: TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ],
                   ),
                 ),
+
                 const SizedBox(width: 16),
+
+                // Botão de Check (Independente do card)
                 InkWell(
                   onTap: () => _toggleSeries(series),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
+                      color: isDone ? theme.colorScheme.primary : Colors.transparent,
                       border: Border.all(
-                        color: isDone
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outline,
+                        color: isDone ? theme.colorScheme.primary : theme.colorScheme.outline,
                         width: 2,
                       ),
-                      color: isDone ? theme.colorScheme.primary : null,
                     ),
                     child: isDone
-                        ? Icon(
-                            Icons.check,
-                            size: 16,
-                            color: theme.colorScheme.onPrimary,
-                          )
+                        ? Icon(Icons.check, size: 20, color: theme.colorScheme.onPrimary)
                         : null,
                   ),
                 ),
@@ -461,6 +440,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
       } else {
         _completedSeriesIds.add(series.id!);
 
+        // 1. Atualiza a ficha (para o peso ficar salvo no card)
         DatabaseHelper().updateSeries(
           series.id!,
           series.weight ?? 0,
@@ -468,20 +448,32 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           true,
           series.type.name,
         );
+
+        if (series.type == SeriesType.valid ||
+            series.type == SeriesType.dropset ||
+            series.type == SeriesType.failure) {
+
+          final exerciseId = widget.exercises
+              .firstWhere((e) => e.series.contains(series))
+              .exercise
+              ?.id;
+
+          if (exerciseId != null) {
+            DatabaseHelper().logSeriesCompletion(
+              exerciseId,
+              series.weight ?? 0,
+              series.repetitions ?? 0
+            );
+          }
+        }
       }
     });
   }
 
   void _showEditDialog(WorkoutSeries series) {
-    final weightCtrl = TextEditingController(
-      text: series.weight?.toString() ?? "",
-    );
-    final repsCtrl = TextEditingController(
-      text: series.repetitions?.toString() ?? "",
-    );
-    final restCtrl = TextEditingController(
-      text: series.restSeconds?.toString() ?? "",
-    );
+    final weightCtrl = TextEditingController(text: series.weight?.toString() ?? "");
+    final repsCtrl = TextEditingController(text: series.repetitions?.toString() ?? "");
+    final restCtrl = TextEditingController(text: series.restSeconds?.toString() ?? "");
 
     showDialog(
       context: context,
@@ -494,15 +486,11 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           children: [
             TextField(
               controller: weightCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               autofocus: true,
               decoration: InputDecoration(
                 labelText: "Carga (kg)",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -511,9 +499,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Repetições",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -522,9 +508,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Descanso (segundos)",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -538,12 +522,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             onPressed: () async {
               setState(() {
                 _hasChanges = true;
-                series.weight = double.tryParse(
-                  weightCtrl.text.replaceAll(',', '.'),
-                );
+                series.weight = double.tryParse(weightCtrl.text.replaceAll(',', '.'));
                 series.repetitions = int.tryParse(repsCtrl.text);
                 series.restSeconds = int.tryParse(restCtrl.text);
               });
+
+              // Atualiza a ficha
               await DatabaseHelper().updateSeries(
                 series.id!,
                 series.weight ?? 0,
@@ -552,6 +536,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                 series.type.name,
                 restSeconds: series.restSeconds,
               );
+
               if (context.mounted) {
                 Navigator.pop(context);
               }
@@ -563,10 +548,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  void _showExerciseDetails(
-    BuildContext context,
-    WorkoutExercise workoutExercise,
-  ) {
+  void _showExerciseDetails(BuildContext context, WorkoutExercise workoutExercise) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -581,9 +563,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
               padding: const EdgeInsets.all(24),
               child: ListView(
@@ -601,63 +581,55 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    "Seu Progresso",
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    "Progresso de Carga",
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Histórico de cargas para ${workoutExercise.exercise?.name}",
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                    "Histórico para ${workoutExercise.exercise?.name}",
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   if (workoutExercise.exercise?.id != null)
                     FutureBuilder<List<ProgressionPoint>>(
                       future: _loadHistory(workoutExercise.exercise!.id!),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 250,
+                            child: Center(child: CircularProgressIndicator()),
                           );
                         }
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const SizedBox(
-                            height: 100,
-                            child: Center(
-                              child: Text("Sem dados históricos ainda."),
+                          return Container(
+                            height: 150,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16)
                             ),
+                            child: const Text("Nenhum histórico registrado ainda."),
                           );
                         }
+                        // Seu gráfico atualizado
                         return ProgressionChart(
                           data: snapshot.data!,
-                          height: 200,
-                          textColor: theme.colorScheme.onSurface,
-                          color: theme.colorScheme.primary,
+                          height: 250,
+                          contentColor: theme.colorScheme.primary,
+                          spotColor: theme.colorScheme.secondary,
                         );
                       },
                     ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 16),
 
                   if (workoutExercise.exercise?.description != null) ...[
-                    Text(
-                      "Instruções",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text("Instruções", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text(
-                      workoutExercise.exercise!.description!,
-                      style: theme.textTheme.bodyMedium,
-                    ),
+                    Text(workoutExercise.exercise!.description!, style: theme.textTheme.bodyMedium),
                   ],
                 ],
               ),
@@ -669,6 +641,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
   }
 
   Future<List<ProgressionPoint>> _loadHistory(int exerciseId) async {
+    // Busca do novo método getExerciseHistory que une histórico + treino atual
     final rawData = await DatabaseHelper().getExerciseHistory(exerciseId);
     return rawData.map((row) {
       DateTime date;

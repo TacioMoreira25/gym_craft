@@ -1,5 +1,7 @@
-import 'dart:math';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'dart:math';
 
 class ProgressionPoint {
   final DateTime date;
@@ -8,306 +10,278 @@ class ProgressionPoint {
   ProgressionPoint({required this.date, required this.weight});
 }
 
-class ProgressionChart extends StatelessWidget {
+class ProgressionChart extends StatefulWidget {
   final List<ProgressionPoint> data;
   final double height;
-  final Color color;
-  final Color textColor;
+  final Color contentColor;
+  final Color spotColor;
+  final Color backgroundColor;
 
   const ProgressionChart({
     super.key,
     required this.data,
-    this.height = 150,
-    this.color = Colors.greenAccent,
-    this.textColor = Colors.white70,
+    this.height = 250,
+    this.contentColor = const Color(0xFFFFC300),
+    this.spotColor = Colors.orangeAccent,
+    this.backgroundColor = const Color(0xFF1E1E1E),
   });
 
   @override
+  State<ProgressionChart> createState() => _ProgressionChartState();
+}
+
+class _ProgressionChartState extends State<ProgressionChart> {
+  late List<ProgressionPoint> _sortedData;
+  double _minX = 0;
+  double _maxX = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _processData();
+  }
+
+  @override
+  void didUpdateWidget(ProgressionChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.data != oldWidget.data) {
+      _processData();
+    }
+  }
+
+  void _processData() {
+    if (widget.data.isEmpty) {
+      _sortedData = [];
+      return;
+    }
+
+    // --- MUDANÇA: REMOVIDO O AGRUPAMENTO POR DIA ---
+    // Agora mostramos TODOS os pontos históricos para você ver a evolução imediata.
+    // Usamos o toList() direto e ordenamos por data.
+    _sortedData = widget.data.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    // Filtro Opcional: Remove duplicatas exatas de horário (se houver bug de salvar 2x)
+    // _sortedData = _sortedData.toSet().toList();
+
+    _resetZoom();
+  }
+
+  void _resetZoom() {
+    setState(() {
+      if (_sortedData.length <= 1) {
+        _minX = -0.5;
+        _maxX = 0.5;
+      } else {
+        _minX = 0;
+        _maxX = (_sortedData.length - 1).toDouble();
+      }
+    });
+  }
+
+  void _zoomIn() {
+    setState(() {
+      double currentRange = _maxX - _minX;
+      if (currentRange <= 1.5) return;
+      double center = (_minX + _maxX) / 2;
+      double newRange = currentRange * 0.6;
+      _minX = center - newRange / 2;
+      _maxX = center + newRange / 2;
+      _fixBounds();
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      double currentRange = _maxX - _minX;
+      double center = (_minX + _maxX) / 2;
+      double newRange = currentRange * 1.4;
+      _minX = center - newRange / 2;
+      _maxX = center + newRange / 2;
+      _fixBounds();
+    });
+  }
+
+  void _fixBounds() {
+    double totalMax = max((_sortedData.length - 1).toDouble(), 0.0);
+    if (_sortedData.length <= 1) {
+      _minX = -0.5;
+      _maxX = 0.5;
+      return;
+    }
+    if (_minX < 0) _minX = 0;
+    if (_maxX > totalMax) _maxX = totalMax;
+    if ((_maxX - _minX) > totalMax) {
+       _minX = 0;
+       _maxX = totalMax;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (data.isEmpty) {
-      return SizedBox(
-        height: height,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    if (_sortedData.isEmpty) return _buildEmptyState();
+
+    double minWeight = _sortedData.map((e) => e.weight).reduce(min);
+    double maxWeight = _sortedData.map((e) => e.weight).reduce(max);
+    double minY = (minWeight - 5).clamp(0, double.infinity);
+    double maxY = maxWeight * 1.2;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: widget.backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.show_chart,
-                color: textColor.withOpacity(0.3),
-                size: 40,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Evolução de Carga',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  if (_sortedData.isNotEmpty)
+                    Text(
+                      _sortedData.length > 1
+                          ? '${_sortedData.length} registros'
+                          : 'Primeiro registro',
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                "Sem histórico suficiente",
-                style: TextStyle(color: textColor.withOpacity(0.5)),
+              Row(
+                children: [
+                  _buildZoomButton(Icons.add, _zoomIn),
+                  _buildZoomButton(Icons.refresh, _resetZoom),
+                  _buildZoomButton(Icons.remove, _zoomOut),
+                ],
               ),
             ],
           ),
-        ),
-      );
-    }
+          const SizedBox(height: 20),
 
-    return Container(
-      height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Evolução de Carga",
-            style: TextStyle(
-              color: textColor,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Se tiver poucos pontos, limita a largura para não esticar demais
-                // "cobrir só a metade da tela" se tiver poucos dados
-                double chartWidth = constraints.maxWidth;
-                if (data.length < 5) {
-                  chartWidth = constraints.maxWidth * 0.6;
-                }
+          // Chart
+          AspectRatio(
+            aspectRatio: 1.7,
+            child: LineChart(
+              LineChartData(
+                minX: _minX, maxX: _maxX, minY: minY, maxY: maxY,
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => const Color(0xFF2C2C2C),
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final index = spot.x.toInt();
+                        if (index < 0 || index >= _sortedData.length) return null;
+                        final point = _sortedData[index];
+                        // Mostra Hora se for hoje, Data se for outro dia
+                        final dateFormat = DateUtils.isSameDay(point.date, DateTime.now())
+                            ? DateFormat('HH:mm')
+                            : DateFormat('dd/MM');
 
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: chartWidth,
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: _ChartPainter(data, color, textColor),
+                        return LineTooltipItem(
+                          '${point.weight.toStringAsFixed(1)} kg\n',
+                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          children: [
+                            TextSpan(
+                              text: dateFormat.format(point.date),
+                              style: TextStyle(color: widget.contentColor, fontSize: 12, fontWeight: FontWeight.normal),
+                            ),
+                          ],
+                        );
+                      }).whereType<LineTooltipItem>().toList();
+                    },
+                  ),
+                  getTouchedSpotIndicator: (_, indexes) => indexes.map((_) => TouchedSpotIndicatorData(
+                    FlLine(color: Colors.white24, strokeWidth: 1, dashArray: [4, 4]),
+                    FlDotData(show: true, getDotPainter: (p, __, ___, ____) => FlDotCirclePainter(radius: 6, color: widget.contentColor, strokeWidth: 2, strokeColor: Colors.white)),
+                  )).toList(),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.white10, strokeWidth: 1),
+                  getDrawingVerticalLine: (_) => FlLine(color: Colors.white10, strokeWidth: 1),
+                ),
+                titlesData: FlTitlesData(
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true, reservedSize: 35, interval: (maxY - minY) / 4,
+                      getTitlesWidget: (v, m) => v == minY || v == maxY ? const SizedBox() : Text(v.toInt().toString(), style: TextStyle(color: Colors.white38, fontSize: 10)),
                     ),
                   ),
-                );
-              },
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true, reservedSize: 30, interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        if (value % 1 != 0) return const SizedBox.shrink();
+                        final index = value.toInt();
+                        if (index < 0 || index >= _sortedData.length) return const SizedBox.shrink();
+
+                        final point = _sortedData[index];
+                        final isLast = index == _sortedData.length - 1;
+
+                        // LÓGICA DE DATA:
+                        // Se for o mesmo dia do ponto anterior, mostra a HORA.
+                        // Se for dia diferente, mostra DATA.
+                        bool sameDayAsPrev = false;
+                        if (index > 0) {
+                          sameDayAsPrev = DateUtils.isSameDay(point.date, _sortedData[index - 1].date);
+                        }
+
+                        String text;
+                        if (isLast) {
+                          text = "Agora";
+                        } else if (sameDayAsPrev) {
+                          text = DateFormat('HH:mm').format(point.date); // Mostra hora para testes no mesmo dia
+                        } else {
+                          text = DateFormat('dd/MM').format(point.date);
+                        }
+
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 8,
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                              color: isLast ? widget.spotColor : Colors.white38,
+                              fontSize: 9,
+                              fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _sortedData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.weight)).toList(),
+                    isCurved: true, curveSmoothness: 0.1, color: widget.contentColor, barWidth: 3, isStrokeCapRound: true,
+                    // Mostra bolinha em TODOS os pontos agora
+                    dotData: FlDotData(show: true, getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(radius: 4, color: widget.contentColor, strokeWidth: 1, strokeColor: Colors.black)),
+                    belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: [widget.contentColor.withOpacity(0.3), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _ChartPainter extends CustomPainter {
-  final List<ProgressionPoint> data;
-  final Color color;
-  final Color textColor;
-
-  _ChartPainter(this.data, this.color, this.textColor);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [color.withOpacity(0.3), color.withOpacity(0.0)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-
-    double minWeight = data.map((e) => e.weight).reduce(min);
-    double maxWeight = data.map((e) => e.weight).reduce(max);
-
-    if (maxWeight == minWeight) {
-      maxWeight += 5;
-      minWeight -= 5;
-    }
-
-    double range = maxWeight - minWeight;
-    if (range == 0) range = 1;
-
-    final path = Path();
-    final fillPath = Path();
-
-    List<Offset> points = [];
-
-    if (data.length == 1) {
-      double x = size.width / 2;
-      double y = size.height / 2;
-      points.add(Offset(x, y));
-    } else {
-      double stepX = size.width / (data.length - 1);
-      for (int i = 0; i < data.length; i++) {
-        double x = i * stepX;
-        double normalizedY = (data[i].weight - minWeight) / range;
-        double y =
-            size.height -
-            (normalizedY * (size.height * 0.7)) -
-            (size.height * 0.15);
-        points.add(Offset(x, y));
-      }
-    }
-
-    if (points.length > 1) {
-      fillPath.moveTo(points.first.dx, size.height);
-      fillPath.lineTo(points.first.dx, points.first.dy);
-      path.moveTo(points.first.dx, points.first.dy);
-
-      for (int i = 0; i < points.length - 1; i++) {
-        final p0 = points[i];
-        final p1 = points[i + 1];
-
-        // Controle para curva suave
-        final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
-        final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
-
-        path.cubicTo(
-          controlPoint1.dx,
-          controlPoint1.dy,
-          controlPoint2.dx,
-          controlPoint2.dy,
-          p1.dx,
-          p1.dy,
-        );
-
-        fillPath.cubicTo(
-          controlPoint1.dx,
-          controlPoint1.dy,
-          controlPoint2.dx,
-          controlPoint2.dy,
-          p1.dx,
-          p1.dy,
-        );
-      }
-
-      fillPath.lineTo(points.last.dx, size.height);
-      fillPath.close();
-
-      canvas.drawPath(fillPath, fillPaint);
-      canvas.drawPath(path, paint);
-    }
-
-    for (int i = 0; i < points.length; i++) {
-      bool isNewDate = false;
-      if (i == 0) {
-        isNewDate = true;
-      } else {
-        final prevDate = data[i - 1].date;
-        final currDate = data[i].date;
-        if (prevDate.day != currDate.day ||
-            prevDate.month != currDate.month ||
-            prevDate.year != currDate.year) {
-          isNewDate = true;
-        }
-      }
-
-      if (isNewDate && i > 0) {
-        final dashPaint = Paint()
-          ..color = textColor.withOpacity(0.2)
-          ..strokeWidth = 1
-          ..style = PaintingStyle.stroke;
-
-        double dashY = 0;
-        while (dashY < size.height) {
-          canvas.drawLine(
-            Offset(points[i].dx - (size.width / (data.length - 1)) / 2, dashY),
-            Offset(
-              points[i].dx - (size.width / (data.length - 1)) / 2,
-              dashY + 4,
-            ),
-            dashPaint,
-          );
-          dashY += 8;
-        }
-      }
-
-      canvas.drawCircle(
-        points[i],
-        6,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.fill,
-      );
-      canvas.drawCircle(
-        points[i],
-        3,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.fill,
-      );
-
-      final textSpan = TextSpan(
-        text: "${data[i].weight.toInt()}kg",
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-      final textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-
-      double labelX = points[i].dx - textPainter.width / 2;
-      double labelY = points[i].dy - 25;
-
-      // Ajuste para não sair da tela
-      if (labelX < 0) labelX = 0;
-      if (labelX + textPainter.width > size.width)
-        labelX = size.width - textPainter.width;
-
-      textPainter.paint(canvas, Offset(labelX, labelY));
-
-      if (isNewDate) {
-        final dateSpan = TextSpan(
-          text: _formatDate(data[i].date),
-          style: TextStyle(
-            color: textColor.withOpacity(0.7),
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        );
-        final datePainter = TextPainter(
-          text: dateSpan,
-          textDirection: TextDirection.ltr,
-        );
-        datePainter.layout();
-
-        double dateX = points[i].dx - datePainter.width / 2;
-        // Se for o primeiro, alinha a esquerda
-        if (i == 0 && points.length > 1) dateX = points[i].dx;
-
-        double dateY = 0; // Topo do gráfico
-
-        // Ajuste para não sair da tela
-        if (dateX < 0) dateX = 0;
-        if (dateX + datePainter.width > size.width)
-          dateX = size.width - datePainter.width;
-
-        datePainter.paint(canvas, Offset(dateX, dateY));
-      }
-    }
+  Widget _buildZoomButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(icon: Icon(icon, color: Colors.white70, size: 20), onPressed: onPressed, constraints: const BoxConstraints());
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    if (date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day) {
-      return "Hoje";
-    }
-
-    const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
-    return "${weekDays[date.weekday - 1]} ${date.day}/${date.month}";
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  Widget _buildEmptyState() => SizedBox(height: widget.height, child: Center(child: Text("Sem dados", style: TextStyle(color: Colors.white54))));
 }
