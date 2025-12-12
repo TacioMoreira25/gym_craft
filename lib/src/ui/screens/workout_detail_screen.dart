@@ -85,7 +85,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                           ),
                         ),
                       );
-                      // Recarrega os dados ao voltar do treino para atualizar pesos/reps
                       controller.loadWorkoutExercises();
                     },
                     icon: const Icon(Icons.play_arrow_rounded),
@@ -360,8 +359,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                   controller.workoutExercises[index],
                   index,
                   theme,
-                  // Ajuste: usar o tema do contexto para decidir isDark se necessário,
-                  // ou passar uma flag baseada em theme.brightness
                   theme.brightness == Brightness.dark,
                 );
               },
@@ -1002,77 +999,124 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
   }
 
   Widget _buildProgressionSheet(
-    BuildContext context,
-    WorkoutExercise workoutExercise,
-  ) {
-    final theme = Theme.of(context);
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.85,
-      builder: (_, controller) {
-        return Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: ListView(
-            controller: controller,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                "Seu Progresso",
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Histórico de cargas para ${workoutExercise.exercise?.name}",
-                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
+  BuildContext context,
+  WorkoutExercise workoutExercise,
+) {
+  final theme = Theme.of(context);
 
-              if (workoutExercise.exercise?.id != null)
-                FutureBuilder<List<ProgressionPoint>>(
-                  future: _loadHistory(workoutExercise.exercise!.id!),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const SizedBox(
-                        height: 100,
-                        child: Center(
-                          child: Text("Sem dados históricos ainda."),
-                        ),
-                      );
-                    }
-                    return ProgressionChart(
-                      data: snapshot.data!,
-                      height: 200,
-                      textColor: theme.colorScheme.onSurface,
-                      color: theme.colorScheme.primary,
-                    );
-                  },
+  return DraggableScrollableSheet(
+    initialChildSize: 0.65,
+    minChildSize: 0.5,
+    maxChildSize: 0.9,
+    builder: (_, controller) {
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Column( // Use Column em vez de ListView direto para fixar o header se quiser
+          children: [
+            // Puxador
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24, top: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              ),
+            ),
+
+            Expanded(
+              child: ListView(
+                controller: controller,
+                children: [
+                  Text(
+                    "Progresso de Carga",
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Histórico para ${workoutExercise.exercise?.name ?? 'Exercício'}",
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  if (workoutExercise.exercise?.id != null)
+                    FutureBuilder<List<ProgressionPoint>>(
+                      // Chama o loadHistory aqui.
+                      // Certifique-se de que _loadHistory busca TODAS as séries desse exercício no banco.
+                      future: _loadHistory(workoutExercise.exercise!.id!),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 250,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        // Se não tiver dados ou lista vazia
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Container(
+                            height: 150,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16)
+                            ),
+                            child: const Text("Nenhum histórico registrado ainda."),
+                          );
+                        }
+
+                        // Renderiza o gráfico
+                        return ProgressionChart(
+                          data: snapshot.data!,
+                          height: 280, // Altura boa para visualização
+                          // Usa as cores do tema do seu app
+                          contentColor: theme.colorScheme.primary,
+                          spotColor: theme.colorScheme.secondary,
+                          backgroundColor: const Color(0xFF1E1E1E), // Fundo escuro fixo ou use theme.cardColor
+                        );
+                      },
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  // Seção de Instruções (Mantida)
+                  if (workoutExercise.exercise?.description != null &&
+                      workoutExercise.exercise!.description!.isNotEmpty) ...[
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Instruções",
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      workoutExercise.exercise!.description!,
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   Future<List<ProgressionPoint>> _loadHistory(int exerciseId) async {
     final rawData = await DatabaseHelper().getExerciseHistory(exerciseId);
