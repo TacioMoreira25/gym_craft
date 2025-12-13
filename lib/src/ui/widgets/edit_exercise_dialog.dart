@@ -78,7 +78,6 @@ class EditExerciseDialog extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Nome do Exercício',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.fitness_center),
                 ),
                 validator: ValidationUtils.validateExerciseName,
               ),
@@ -90,7 +89,6 @@ class EditExerciseDialog extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Categoria',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
                 ),
                 items: controller.categories.map((category) {
                   return DropdownMenuItem(
@@ -112,7 +110,6 @@ class EditExerciseDialog extends StatelessWidget {
                       decoration: const InputDecoration(
                         labelText: 'URL da Imagem (opcional)',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.image),
                         hintText: 'https://exemplo.com/imagem.jpg',
                       ),
                       validator: ValidationUtils.validateImageUrl,
@@ -147,7 +144,6 @@ class EditExerciseDialog extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Descrição (opcional)',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
                   hintText: 'Breve descrição do exercício',
                 ),
                 maxLines: 2,
@@ -160,7 +156,6 @@ class EditExerciseDialog extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Instruções (opcional)',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.list),
                   hintText: 'Como executar o exercício',
                 ),
                 maxLines: 3,

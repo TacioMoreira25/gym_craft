@@ -3,6 +3,7 @@ import 'migrations/migration.dart';
 import 'migrations/migration_v1.dart';
 import 'migrations/migration_v2.dart';
 import 'migrations/migration_v3.dart';
+import 'migrations/migration_v4.dart';
 import 'config/database_config.dart';
 
 class MigrationManager {
@@ -10,6 +11,7 @@ class MigrationManager {
     MigrationV1(),
     MigrationV2(),
     MigrationV3(),
+    MigrationV4(),
   ];
 
   static Future<void> createDatabase(Database db, int version) async {
@@ -27,45 +29,56 @@ class MigrationManager {
 
       for (int v = 2; v <= version; v++) {
         final migration = _migrations.firstWhere((m) => m.version == v);
-        print('Executando migração v${migration.version}: ${migration.description}');
+        print(
+          'Executando migração v${migration.version}: ${migration.description}',
+        );
         await migration.up(db);
       }
 
       print('Banco de dados criado com sucesso');
-
     } catch (e) {
       print('Erro na criação do banco: $e');
       rethrow;
     }
   }
 
-  static Future<void> upgradeDatabase(Database db, int oldVersion, int newVersion) async {
+  static Future<void> upgradeDatabase(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
     print('Atualizando banco de dados de v$oldVersion para v$newVersion');
 
     try {
       for (int v = oldVersion + 1; v <= newVersion; v++) {
         final migration = _migrations.firstWhere((m) => m.version == v);
-        print('Executando migração v${migration.version}: ${migration.description}');
+        print(
+          'Executando migração v${migration.version}: ${migration.description}',
+        );
         await migration.up(db);
       }
 
       print('Upgrade do banco concluído');
-
     } catch (e) {
       print('Erro durante upgrade: $e');
       rethrow;
     }
   }
 
-  static Future<void> downgradeDatabase(Database db, int oldVersion, int newVersion) async {
-    print('Fazendo downgrade do banco de dados de v$oldVersion para v$newVersion');
+  static Future<void> downgradeDatabase(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    print(
+      'Fazendo downgrade do banco de dados de v$oldVersion para v$newVersion',
+    );
 
     try {
       await resetDatabase(db);
       await createDatabase(db, newVersion);
 
       print('Downgrade concluído');
-
     } catch (e) {
       print('Erro durante downgrade: $e');
       rethrow;
@@ -91,14 +104,14 @@ class MigrationManager {
       }
     }
   }
+
   static bool needsMigration(int currentVersion, int targetVersion) {
     return currentVersion != targetVersion;
   }
 
   static List<Map<String, dynamic>> getMigrationInfo() {
-    return _migrations.map((m) => {
-      'version': m.version,
-      'description': m.description,
-    }).toList();
+    return _migrations
+        .map((m) => {'version': m.version, 'description': m.description})
+        .toList();
   }
 }

@@ -91,6 +91,14 @@ class WorkoutDetailController extends BaseController {
     }
   }
 
+  Future<void> clearHistoryForExercise(int exerciseId) async {
+    try {
+      await _databaseService.history.clearExerciseHistory(exerciseId);
+    } catch (e) {
+      setError('Erro ao limpar histórico: $e');
+    }
+  }
+
   Future<void> updateWorkoutExercise(Map<String, dynamic> exerciseData) async {
     try {
       // A lógica de atualização será implementada via dialog

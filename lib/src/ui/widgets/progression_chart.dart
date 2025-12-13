@@ -6,8 +6,9 @@ import 'dart:math';
 class ProgressionPoint {
   final DateTime date;
   final double weight;
+  final int? sessionId;
 
-  ProgressionPoint({required this.date, required this.weight});
+  ProgressionPoint({required this.date, required this.weight, this.sessionId});
 }
 
 class ProgressionChart extends StatefulWidget {
@@ -32,6 +33,7 @@ class ProgressionChart extends StatefulWidget {
 
 class _ProgressionChartState extends State<ProgressionChart> {
   late List<ProgressionPoint> _sortedData;
+  late List<Color> _pointColors;
   double _minX = 0;
   double _maxX = 0;
 
@@ -52,19 +54,48 @@ class _ProgressionChartState extends State<ProgressionChart> {
   void _processData() {
     if (widget.data.isEmpty) {
       _sortedData = [];
+      _pointColors = [];
       return;
     }
 
-    // --- MUDANÇA: REMOVIDO O AGRUPAMENTO POR DIA ---
-    // Agora mostramos TODOS os pontos históricos para você ver a evolução imediata.
-    // Usamos o toList() direto e ordenamos por data.
     _sortedData = widget.data.toList()
       ..sort((a, b) => a.date.compareTo(b.date));
 
-    // Filtro Opcional: Remove duplicatas exatas de horário (se houver bug de salvar 2x)
-    // _sortedData = _sortedData.toSet().toList();
-
+    _calculateColors();
     _resetZoom();
+  }
+
+  void _calculateColors() {
+    _pointColors = [];
+    if (_sortedData.isEmpty) return;
+
+    final colorPalette = [
+      widget.contentColor,
+      widget.spotColor,
+      Colors.cyanAccent,
+      Colors.purpleAccent,
+      Colors.greenAccent,
+    ];
+
+    int colorIndex = 0;
+    _pointColors.add(colorPalette[colorIndex]);
+
+    for (int i = 1; i < _sortedData.length; i++) {
+      final prevPoint = _sortedData[i - 1];
+      final currPoint = _sortedData[i];
+
+      bool sessionChanged = false;
+      if (prevPoint.sessionId != null && currPoint.sessionId != null) {
+        sessionChanged = prevPoint.sessionId != currPoint.sessionId;
+      } else {
+        sessionChanged = !DateUtils.isSameDay(prevPoint.date, currPoint.date);
+      }
+
+      if (sessionChanged) {
+        colorIndex = (colorIndex + 1) % colorPalette.length;
+      }
+      _pointColors.add(colorPalette[colorIndex]);
+    }
   }
 
   void _resetZoom() {
@@ -112,8 +143,8 @@ class _ProgressionChartState extends State<ProgressionChart> {
     if (_minX < 0) _minX = 0;
     if (_maxX > totalMax) _maxX = totalMax;
     if ((_maxX - _minX) > totalMax) {
-       _minX = 0;
-       _maxX = totalMax;
+      _minX = 0;
+      _maxX = totalMax;
     }
   }
 
@@ -143,15 +174,24 @@ class _ProgressionChartState extends State<ProgressionChart> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Evolução de Carga',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text(
+                    'Evolução de Carga',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   if (_sortedData.isNotEmpty)
                     Text(
                       _sortedData.length > 1
                           ? '${_sortedData.length} registros'
                           : 'Primeiro registro',
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 12,
+                      ),
                     ),
                 ],
               ),
@@ -171,59 +211,110 @@ class _ProgressionChartState extends State<ProgressionChart> {
             aspectRatio: 1.7,
             child: LineChart(
               LineChartData(
-                minX: _minX, maxX: _maxX, minY: minY, maxY: maxY,
+                minX: _minX,
+                maxX: _maxX,
+                minY: minY,
+                maxY: maxY,
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => const Color(0xFF2C2C2C),
                     getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        final index = spot.x.toInt();
-                        if (index < 0 || index >= _sortedData.length) return null;
-                        final point = _sortedData[index];
-                        // Mostra Hora se for hoje, Data se for outro dia
-                        final dateFormat = DateUtils.isSameDay(point.date, DateTime.now())
-                            ? DateFormat('HH:mm')
-                            : DateFormat('dd/MM');
+                      return touchedSpots
+                          .map((spot) {
+                            final index = spot.x.toInt();
+                            if (index < 0 || index >= _sortedData.length)
+                              return null;
+                            final point = _sortedData[index];
+                            // Mostra Hora se for hoje, Data se for outro dia
+                            final dateFormat =
+                                DateUtils.isSameDay(point.date, DateTime.now())
+                                ? DateFormat('HH:mm')
+                                : DateFormat('dd/MM');
 
-                        return LineTooltipItem(
-                          '${point.weight.toStringAsFixed(1)} kg\n',
-                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          children: [
-                            TextSpan(
-                              text: dateFormat.format(point.date),
-                              style: TextStyle(color: widget.contentColor, fontSize: 12, fontWeight: FontWeight.normal),
-                            ),
-                          ],
-                        );
-                      }).whereType<LineTooltipItem>().toList();
+                            return LineTooltipItem(
+                              '${point.weight.toStringAsFixed(1)} kg\n',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: dateFormat.format(point.date),
+                                  style: TextStyle(
+                                    color: widget.contentColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            );
+                          })
+                          .whereType<LineTooltipItem>()
+                          .toList();
                     },
                   ),
-                  getTouchedSpotIndicator: (_, indexes) => indexes.map((_) => TouchedSpotIndicatorData(
-                    FlLine(color: Colors.white24, strokeWidth: 1, dashArray: [4, 4]),
-                    FlDotData(show: true, getDotPainter: (p, __, ___, ____) => FlDotCirclePainter(radius: 6, color: widget.contentColor, strokeWidth: 2, strokeColor: Colors.white)),
-                  )).toList(),
+                  getTouchedSpotIndicator: (_, indexes) => indexes
+                      .map(
+                        (_) => TouchedSpotIndicatorData(
+                          FlLine(
+                            color: Colors.white24,
+                            strokeWidth: 1,
+                            dashArray: [4, 4],
+                          ),
+                          FlDotData(
+                            show: true,
+                            getDotPainter: (p, __, ___, ____) =>
+                                FlDotCirclePainter(
+                                  radius: 6,
+                                  color: widget.contentColor,
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
+                                ),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
                 gridData: FlGridData(
                   show: true,
-                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.white10, strokeWidth: 1),
-                  getDrawingVerticalLine: (_) => FlLine(color: Colors.white10, strokeWidth: 1),
+                  getDrawingHorizontalLine: (_) =>
+                      FlLine(color: Colors.white10, strokeWidth: 1),
+                  getDrawingVerticalLine: (_) =>
+                      FlLine(color: Colors.white10, strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
-                      showTitles: true, reservedSize: 35, interval: (maxY - minY) / 4,
-                      getTitlesWidget: (v, m) => v == minY || v == maxY ? const SizedBox() : Text(v.toInt().toString(), style: TextStyle(color: Colors.white38, fontSize: 10)),
+                      showTitles: true,
+                      reservedSize: 35,
+                      interval: (maxY - minY) / 4,
+                      getTitlesWidget: (v, m) => v == minY || v == maxY
+                          ? const SizedBox()
+                          : Text(
+                              v.toInt().toString(),
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                              ),
+                            ),
                     ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
-                      showTitles: true, reservedSize: 30, interval: 1,
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         if (value % 1 != 0) return const SizedBox.shrink();
                         final index = value.toInt();
-                        if (index < 0 || index >= _sortedData.length) return const SizedBox.shrink();
+                        if (index < 0 || index >= _sortedData.length)
+                          return const SizedBox.shrink();
 
                         final point = _sortedData[index];
                         final isLast = index == _sortedData.length - 1;
@@ -233,14 +324,19 @@ class _ProgressionChartState extends State<ProgressionChart> {
                         // Se for dia diferente, mostra DATA.
                         bool sameDayAsPrev = false;
                         if (index > 0) {
-                          sameDayAsPrev = DateUtils.isSameDay(point.date, _sortedData[index - 1].date);
+                          sameDayAsPrev = DateUtils.isSameDay(
+                            point.date,
+                            _sortedData[index - 1].date,
+                          );
                         }
 
                         String text;
                         if (isLast) {
                           text = "Agora";
                         } else if (sameDayAsPrev) {
-                          text = DateFormat('HH:mm').format(point.date); // Mostra hora para testes no mesmo dia
+                          text = DateFormat('HH:mm').format(
+                            point.date,
+                          ); // Mostra hora para testes no mesmo dia
                         } else {
                           text = DateFormat('dd/MM').format(point.date);
                         }
@@ -253,7 +349,9 @@ class _ProgressionChartState extends State<ProgressionChart> {
                             style: TextStyle(
                               color: isLast ? widget.spotColor : Colors.white38,
                               fontSize: 9,
-                              fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isLast
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         );
@@ -264,11 +362,39 @@ class _ProgressionChartState extends State<ProgressionChart> {
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: _sortedData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.weight)).toList(),
-                    isCurved: true, curveSmoothness: 0.1, color: widget.contentColor, barWidth: 3, isStrokeCapRound: true,
-                    // Mostra bolinha em TODOS os pontos agora
-                    dotData: FlDotData(show: true, getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(radius: 4, color: widget.contentColor, strokeWidth: 1, strokeColor: Colors.black)),
-                    belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: [widget.contentColor.withOpacity(0.3), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                    spots: _sortedData
+                        .asMap()
+                        .entries
+                        .map((e) => FlSpot(e.key.toDouble(), e.value.weight))
+                        .toList(),
+                    isCurved: true,
+                    curveSmoothness: 0.1,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    gradient: _getLineGradient(),
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        final color = _pointColors[index];
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: color,
+                          strokeWidth: 1,
+                          strokeColor: Colors.black,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          widget.contentColor.withOpacity(0.3),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -279,9 +405,55 @@ class _ProgressionChartState extends State<ProgressionChart> {
     );
   }
 
-  Widget _buildZoomButton(IconData icon, VoidCallback onPressed) {
-    return IconButton(icon: Icon(icon, color: Colors.white70, size: 20), onPressed: onPressed, constraints: const BoxConstraints());
+  LinearGradient _getLineGradient() {
+    if (_sortedData.isEmpty) {
+      return LinearGradient(colors: [widget.contentColor, widget.contentColor]);
+    }
+
+    final List<Color> colors = [];
+    final List<double> stops = [];
+
+    for (int i = 0; i < _sortedData.length; i++) {
+      final color = _pointColors[i];
+      final stop =
+          i / (_sortedData.length - 1 > 0 ? _sortedData.length - 1 : 1);
+
+      if (i > 0) {
+        final prevColor = _pointColors[i - 1];
+        if (color != prevColor) {
+    
+          final prevStop =
+              (i - 1) /
+              (_sortedData.length - 1 > 0 ? _sortedData.length - 1 : 1);
+          colors.add(color);
+          stops.add(prevStop);
+        }
+      }
+
+      colors.add(color);
+      stops.add(stop);
+    }
+
+    if (colors.length == 1) {
+      colors.add(colors.first);
+      stops.add(1.0);
+    }
+
+    return LinearGradient(colors: colors, stops: stops);
   }
 
-  Widget _buildEmptyState() => SizedBox(height: widget.height, child: Center(child: Text("Sem dados", style: TextStyle(color: Colors.white54))));
+  Widget _buildZoomButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, color: Colors.white70, size: 20),
+      onPressed: onPressed,
+      constraints: const BoxConstraints(),
+    );
+  }
+
+  Widget _buildEmptyState() => SizedBox(
+    height: widget.height,
+    child: Center(
+      child: Text("Sem dados", style: TextStyle(color: Colors.white54)),
+    ),
+  );
 }

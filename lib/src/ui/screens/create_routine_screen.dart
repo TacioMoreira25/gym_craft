@@ -133,23 +133,6 @@ class _CreateRoutineView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.primary.withOpacity(0.2),
-                theme.colorScheme.secondary.withOpacity(0.2),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(
-            Icons.add_circle_rounded,
-            size: 48,
-            color: theme.colorScheme.primary,
-          ),
-        ),
         const SizedBox(height: 16),
         Text(
           'Nova Rotina',
@@ -192,11 +175,6 @@ class _CreateRoutineView extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.edit_outlined,
-                    color: theme.colorScheme.primary,
-                    size: 24,
-                  ),
                   const SizedBox(width: 12),
                   Text(
                     'Informações da Rotina',
@@ -213,10 +191,6 @@ class _CreateRoutineView extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: 'Nome da Rotina',
                   hintText: 'Ex: Push Pull Legs',
-                  prefixIcon: Icon(
-                    Icons.fitness_center_outlined,
-                    color: theme.colorScheme.primary,
-                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -234,10 +208,6 @@ class _CreateRoutineView extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: 'Descrição (opcional)',
                   hintText: 'Descreva sua rotina...',
-                  prefixIcon: Icon(
-                    Icons.description_outlined,
-                    color: theme.colorScheme.primary,
-                  ),
                 ),
                 maxLines: 3,
                 textInputAction: TextInputAction.done,
@@ -322,11 +292,6 @@ class _CreateRoutineView extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.lightbulb_outlined,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
             const SizedBox(width: 8),
             Text(
               'Sugestões de Rotinas',

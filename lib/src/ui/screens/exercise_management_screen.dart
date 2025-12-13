@@ -308,22 +308,32 @@ class _ExerciseManagementView extends StatelessWidget {
               value: 'edit',
               child: Row(
                 children: [
-                  Icon(Icons.edit, size: 20),
+                  Icon(Icons.edit, size: 20, color: Colors.blue),
                   SizedBox(width: 8),
                   Text('Editar'),
                 ],
               ),
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Excluir'),
-                ],
-              ),
-            ),
+           PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Excluir',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
           ],
         ),
         onTap: () => _editExercise(context, controller, exercise),

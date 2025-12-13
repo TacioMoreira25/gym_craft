@@ -99,7 +99,6 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
               decoration: const InputDecoration(
                 labelText: 'Nome do Treino',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.fitness_center),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -114,7 +113,6 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
               decoration: const InputDecoration(
                 labelText: 'Descrição (opcional)',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
               ),
               maxLines: 3,
             ),
