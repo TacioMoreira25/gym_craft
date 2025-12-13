@@ -10,7 +10,7 @@ import '../../shared/utils/snackbar_utils.dart';
 import '../widgets/edit_workout_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
 import '../widgets/progression_chart.dart';
-import '../../data/database/database_helper.dart';
+import '../../data/repositories/history_repository.dart';
 import '../controllers/workout_detail_controller.dart';
 import 'workout_execution_screen.dart';
 
@@ -80,6 +80,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                       await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => WorkoutExecutionScreen(
+                            workoutId: controller.workout.id,
                             workoutName: controller.workout.name,
                             exercises: controller.workoutExercises,
                           ),
@@ -382,11 +383,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                 color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(
-                Icons.fitness_center_outlined,
-                size: 48,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -540,9 +536,9 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                       children: [
                         IconButton(
                           icon: Icon(
-                            Icons.insights_rounded,
+                            Icons.show_chart_rounded,
                             color: theme.colorScheme.primary,
-                            size: 20,
+                            size: 22,
                           ),
                           tooltip: 'Ver Progresso',
                           onPressed: () {
@@ -587,13 +583,27 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                                   Icon(
                                     Icons.delete_rounded,
                                     size: 20,
-                                    color: Colors.red[600],
+                                    color: theme.colorScheme.error,
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    'Remover',
-                                    style: TextStyle(color: Colors.red[600]),
+                                    'Excluir',
+                                    style: TextStyle(color: theme.colorScheme.error),
                                   ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'clear_history',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.history_rounded,
+                                    size: 20,
+                                    color: Colors.orange[600],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Limpar Histórico'),
                                 ],
                               ),
                             ),
@@ -609,6 +619,13 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                                 break;
                               case 'delete':
                                 _deleteExercise(
+                                  context,
+                                  controller,
+                                  workoutExercise,
+                                );
+                                break;
+                              case 'clear_history':
+                                _clearExerciseHistory(
                                   context,
                                   controller,
                                   workoutExercise,
@@ -956,11 +973,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
-                          Icons.fitness_center_outlined,
-                          size: 14,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Exercício',
@@ -999,127 +1011,133 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
   }
 
   Widget _buildProgressionSheet(
-  BuildContext context,
-  WorkoutExercise workoutExercise,
-) {
-  final theme = Theme.of(context);
+    BuildContext context,
+    WorkoutExercise workoutExercise,
+  ) {
+    final theme = Theme.of(context);
 
-  return DraggableScrollableSheet(
-    initialChildSize: 0.65,
-    minChildSize: 0.5,
-    maxChildSize: 0.9,
-    builder: (_, controller) {
-      return Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Column( // Use Column em vez de ListView direto para fixar o header se quiser
-          children: [
-            // Puxador
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24, top: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      builder: (_, controller) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Column(
+            // Use Column em vez de ListView direto para fixar o header se quiser
+            children: [
+              // Puxador
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24, top: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
 
-            Expanded(
-              child: ListView(
-                controller: controller,
-                children: [
-                  Text(
-                    "Progresso de Carga",
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Histórico para ${workoutExercise.exercise?.name ?? 'Exercício'}",
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  if (workoutExercise.exercise?.id != null)
-                    FutureBuilder<List<ProgressionPoint>>(
-                      // Chama o loadHistory aqui.
-                      // Certifique-se de que _loadHistory busca TODAS as séries desse exercício no banco.
-                      future: _loadHistory(workoutExercise.exercise!.id!),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(
-                            height: 250,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        // Se não tiver dados ou lista vazia
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Container(
-                            height: 150,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16)
-                            ),
-                            child: const Text("Nenhum histórico registrado ainda."),
-                          );
-                        }
-
-                        // Renderiza o gráfico
-                        return ProgressionChart(
-                          data: snapshot.data!,
-                          height: 280, // Altura boa para visualização
-                          // Usa as cores do tema do seu app
-                          contentColor: theme.colorScheme.primary,
-                          spotColor: theme.colorScheme.secondary,
-                          backgroundColor: const Color(0xFF1E1E1E), // Fundo escuro fixo ou use theme.cardColor
-                        );
-                      },
-                    ),
-
-                  const SizedBox(height: 32),
-
-                  // Seção de Instruções (Mantida)
-                  if (workoutExercise.exercise?.description != null &&
-                      workoutExercise.exercise!.description!.isNotEmpty) ...[
-                    const Divider(),
-                    const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: controller,
+                  children: [
                     Text(
-                      "Instruções",
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      "Progresso de Carga",
+                      style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
-                      workoutExercise.exercise!.description!,
-                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                      "Histórico para ${workoutExercise.exercise?.name ?? 'Exercício'}",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey,
+                      ),
                     ),
+
                     const SizedBox(height: 32),
+
+                    if (workoutExercise.exercise?.id != null)
+                      FutureBuilder<List<ProgressionPoint>>(
+                        future: _loadHistory(workoutExercise.exercise!.id!),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox(
+                              height: 250,
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+
+                          // Se não tiver dados ou lista vazia
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return Container(
+                              height: 150,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                "Nenhum histórico registrado ainda.",
+                              ),
+                            );
+                          }
+
+                          // Renderiza o gráfico
+                          return ProgressionChart(
+                            data: snapshot.data!,
+                            height: 280, // Altura boa para visualização
+                            // Usa as cores do tema do seu app
+                            contentColor: theme.colorScheme.primary,
+                            spotColor: theme.colorScheme.secondary,
+                            backgroundColor: const Color(
+                              0xFF1E1E1E,
+                            ), // Fundo escuro fixo ou use theme.cardColor
+                          );
+                        },
+                      ),
+
+                    const SizedBox(height: 32),
+
+                    // Seção de Instruções (Mantida)
+                    if (workoutExercise.exercise?.description != null &&
+                        workoutExercise.exercise!.description!.isNotEmpty) ...[
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Instruções",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        workoutExercise.exercise!.description!,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<List<ProgressionPoint>> _loadHistory(int exerciseId) async {
-    final rawData = await DatabaseHelper().getExerciseHistory(exerciseId);
+    final rawData = await HistoryRepository().getExerciseHistory(exerciseId);
     return rawData.map((row) {
       DateTime date;
       if (row['created_at'] is int) {
@@ -1216,8 +1234,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
           ),
           title: Row(
             children: [
-              Icon(Icons.warning_rounded, color: Colors.orange[600], size: 28),
-              const SizedBox(width: 12),
               const Text('Confirmar Exclusão'),
             ],
           ),
@@ -1235,7 +1251,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
               ),
               child: const Text('Cancelar'),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
                 await controller.deleteExercise(workoutExercise);
@@ -1246,14 +1262,77 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                   );
                 }
               },
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Excluir'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _clearExerciseHistory(
+    BuildContext context,
+    WorkoutDetailController controller,
+    WorkoutExercise workoutExercise,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final theme = Theme.of(dialogContext);
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.history_rounded, color: Colors.orange[600], size: 28),
+              const SizedBox(width: 12),
+              const Text('Limpar Histórico'),
+            ],
+          ),
+          content: Text(
+            'Tem certeza que deseja limpar todo o histórico de execução de "${workoutExercise.exercise?.name ?? 'este exercício'}"? Esta ação não pode ser desfeita.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                if (workoutExercise.exercise?.id != null) {
+                  await controller.clearHistoryForExercise(
+                    workoutExercise.exercise!.id!,
+                  );
+                  if (context.mounted) {
+                    SnackBarUtils.showSuccess(
+                      context,
+                      'Histórico limpo com sucesso!',
+                    );
+                  }
+                }
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
+                backgroundColor: Colors.orange[600],
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Remover'),
+              child: const Text('Limpar'),
             ),
           ],
         );

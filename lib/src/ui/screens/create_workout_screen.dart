@@ -144,10 +144,6 @@ class _CreateWorkoutView extends StatelessWidget {
               decoration: InputDecoration(
                 labelText: 'Nome do Treino',
                 hintText: 'Ex: Treino A, Push, Peito e Tríceps',
-                prefixIcon: Icon(
-                  Icons.fitness_center_outlined,
-                  color: theme.colorScheme.primary,
-                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -162,10 +158,6 @@ class _CreateWorkoutView extends StatelessWidget {
               decoration: InputDecoration(
                 labelText: 'Descrição (opcional)',
                 hintText: 'Descreva o foco deste treino...',
-                prefixIcon: Icon(
-                  Icons.description_outlined,
-                  color: theme.colorScheme.primary,
-                ),
               ),
               maxLines: 2,
             ),

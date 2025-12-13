@@ -68,7 +68,6 @@ class _RoutineDetailView extends StatelessWidget {
       builder: (context, controller, child) {
         final theme = Theme.of(context);
 
-        // Iniciar animação quando os dados são carregados
         if (!controller.isLoading && !animationController.isCompleted) {
           animationController.forward();
         }
@@ -330,11 +329,6 @@ class _RoutineDetailView extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
-                          Icons.fitness_center_outlined,
-                          size: 14,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Treino',
@@ -508,17 +502,13 @@ class _RoutineDetailView extends StatelessWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    PopupMenuItem(
+                    const PopupMenuItem(
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.edit_outlined,
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('Editar', style: TextStyle(fontSize: 14)),
+                          Icon(Icons.edit, color: Colors.blue ,size: 18),
+                          SizedBox(width: 8),
+                          Text('Editar'),
                         ],
                       ),
                     ),

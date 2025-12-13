@@ -1,41 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:gym_craft/src/models/workout_exercise.dart';
 import 'package:gym_craft/src/models/workout_series.dart';
-import 'package:gym_craft/src/models/series_type.dart';
-import 'package:gym_craft/src/data/database/database_helper.dart';
+import 'package:gym_craft/src/ui/controllers/workout_execution_controller.dart';
 import 'package:gym_craft/src/ui/widgets/exercise_image_widget.dart';
 import 'package:gym_craft/src/ui/widgets/progression_chart.dart';
+import 'package:gym_craft/src/data/repositories/history_repository.dart';
 import 'package:gym_craft/src/shared/constants/constants.dart';
 
-class WorkoutExecutionScreen extends StatefulWidget {
+class WorkoutExecutionScreen extends StatelessWidget {
+  final int? workoutId;
   final String workoutName;
   final List<WorkoutExercise> exercises;
 
   const WorkoutExecutionScreen({
     super.key,
+    this.workoutId,
     required this.workoutName,
     required this.exercises,
   });
 
   @override
-  State<WorkoutExecutionScreen> createState() => _WorkoutExecutionScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) =>
+          WorkoutExecutionController(workoutId: workoutId, exercises: exercises)
+            ..initSession(),
+      child: _WorkoutExecutionView(workoutName: workoutName),
+    );
+  }
 }
 
-class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
+class _WorkoutExecutionView extends StatefulWidget {
+  final String workoutName;
+
+  const _WorkoutExecutionView({required this.workoutName});
+
+  @override
+  State<_WorkoutExecutionView> createState() => _WorkoutExecutionViewState();
+}
+
+class _WorkoutExecutionViewState extends State<_WorkoutExecutionView> {
   final PageController _pageController = PageController(viewportFraction: 0.95);
   int _currentIndex = 0;
-  final Set<int> _completedSeriesIds = {};
-  bool _hasChanges = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final controller = context.watch<WorkoutExecutionController>();
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
+        final shouldPop = await _onWillPop(context, controller);
         if (shouldPop && context.mounted) {
           Navigator.of(context).pop(result);
         }
@@ -45,47 +63,52 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () async {
-                        final shouldPop = await _onWillPop();
+                        final shouldPop = await _onWillPop(context, controller);
                         if (shouldPop && context.mounted) {
                           Navigator.of(context).pop();
                         }
                       },
                     ),
-                    Text(
-                      _currentIndex < widget.exercises.length
-                          ? "${_currentIndex + 1} / ${widget.exercises.length}"
-                          : "Resumo",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        widget.workoutName,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    // Espaço para equilibrar o botão de fechar e manter o título centralizado
                     const SizedBox(width: 48),
                   ],
                 ),
               ),
-
               // Conteúdo (Cards dos Exercícios)
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
-                  itemCount: widget.exercises.length + 1,
-                  onPageChanged: (index) => setState(() => _currentIndex = index),
+                  itemCount: controller.exercises.length + 1,
+                  onPageChanged: (index) =>
+                      setState(() => _currentIndex = index),
                   itemBuilder: (context, index) {
-                    if (index == widget.exercises.length) {
-                      return _buildFinishScreen(theme);
+                    if (index == controller.exercises.length) {
+                      return _buildFinishScreen(context, theme, controller);
                     }
-                    return _buildExerciseCard(widget.exercises[index], theme);
+                    return _buildExerciseCard(
+                      context,
+                      controller.exercises[index],
+                      theme,
+                      controller,
+                    );
                   },
                 ),
               ),
@@ -96,15 +119,18 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  Future<bool> _onWillPop() async {
-    if (!_hasChanges && _completedSeriesIds.isEmpty) return true;
+  Future<bool> _onWillPop(
+    BuildContext context,
+    WorkoutExecutionController controller,
+  ) async {
+    if (!controller.hasChanges) return true;
 
     return await showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("Sair do Treino?"),
             content: const Text(
-              "Se sair agora, o progresso marcado será salvo, mas o treino não será finalizado. Deseja sair?",
+              "Se sair agora, o progresso marcado será salvo, mas o treino não será finalizado oficialmente. Deseja sair?",
             ),
             actions: [
               TextButton(
@@ -121,7 +147,11 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
         false;
   }
 
-  Widget _buildFinishScreen(ThemeData theme) {
+  Widget _buildFinishScreen(
+    BuildContext context,
+    ThemeData theme,
+    WorkoutExecutionController controller,
+  ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       decoration: BoxDecoration(
@@ -160,12 +190,20 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           ),
           const SizedBox(height: 48),
           ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () async {
+              await controller.finishWorkout();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
             icon: const Icon(Icons.check_circle_outline),
             label: const Text("Concluir e Sair"),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -173,7 +211,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  Widget _buildExerciseCard(WorkoutExercise workoutExercise, ThemeData theme) {
+  Widget _buildExerciseCard(
+    BuildContext context,
+    WorkoutExercise workoutExercise,
+    ThemeData theme,
+    WorkoutExecutionController controller,
+  ) {
     final exercise = workoutExercise.exercise;
 
     return Container(
@@ -185,7 +228,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header Row (Title + Buttons)
+          // Header Row (Title)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
             child: Row(
@@ -212,16 +255,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     ],
                   ),
                 ),
-                // Botão de Insights (Gráfico) - Mantido, pois é opcional e útil
-                IconButton(
-                  icon: const Icon(Icons.insights_rounded),
-                  tooltip: "Ver Progresso",
-                  onPressed: () {
-                    if (exercise?.id != null) {
-                      _showExerciseDetails(context, workoutExercise);
-                    }
-                  },
-                ),
+                // Botão de Insights (Gráfico)
               ],
             ),
           ),
@@ -250,15 +284,22 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               padding: const EdgeInsets.all(20),
               child: ListView(
                 children: [
-                  if (workoutExercise.notes != null && workoutExercise.notes!.isNotEmpty)
+                  if (workoutExercise.notes != null &&
+                      workoutExercise.notes!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                          color: theme.colorScheme.surfaceVariant.withOpacity(
+                            0.5,
+                          ),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withOpacity(
+                              0.5,
+                            ),
+                          ),
                         ),
                         child: Text(
                           "Nota: ${workoutExercise.notes}",
@@ -272,7 +313,13 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     ),
 
                   ...workoutExercise.series.map(
-                    (series) => _buildSeriesRow(series, theme),
+                    (series) => _buildSeriesRow(
+                      context,
+                      series,
+                      theme,
+                      controller,
+                      workoutExercise.exercise?.id,
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -294,14 +341,21 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  Widget _buildSeriesRow(WorkoutSeries series, ThemeData theme) {
-    final isDone = _completedSeriesIds.contains(series.id);
+  Widget _buildSeriesRow(
+    BuildContext context,
+    WorkoutSeries series,
+    ThemeData theme,
+    WorkoutExecutionController controller,
+    int? exerciseId,
+  ) {
+    final isDone = controller.isSeriesCompleted(series.id!);
     final typeName = series.type.displayName;
-    final typeColor = AppConstants.seriesTypeColors[series.type] ?? theme.colorScheme.primary;
+    final typeColor =
+        AppConstants.seriesTypeColors[series.type] ?? theme.colorScheme.primary;
 
     return GestureDetector(
       // Toque no card abre edição
-      onTap: () => _showEditDialog(series),
+      onTap: () => _showEditDialog(context, series, controller),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 12),
@@ -312,7 +366,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               : theme.colorScheme.surfaceVariant.withOpacity(0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDone ? theme.colorScheme.primary.withOpacity(0.3) : Colors.transparent,
+            color: isDone
+                ? theme.colorScheme.primary.withOpacity(0.3)
+                : Colors.transparent,
             width: 1.5,
           ),
         ),
@@ -340,10 +396,14 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isDone ? theme.colorScheme.primary : theme.colorScheme.surface,
+                    color: isDone
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isDone ? Colors.transparent : theme.colorScheme.outlineVariant,
+                      color: isDone
+                          ? Colors.transparent
+                          : theme.colorScheme.outlineVariant,
                     ),
                   ),
                   child: Text(
@@ -351,7 +411,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: isDone ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                      color: isDone
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -365,25 +427,42 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     children: [
                       Text(
                         "${series.weight?.toStringAsFixed(series.weight!.truncateToDouble() == series.weight ? 0 : 1) ?? '--'}",
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Text("kg", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text(
+                        "kg",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
 
                       const Spacer(),
 
                       Text(
                         "${series.repetitions ?? '--'}",
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Text("reps", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text(
+                        "reps",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
 
                       const Spacer(),
 
                       // Tempo de descanso
-                      if (series.restSeconds != null && series.restSeconds! > 0) ...[
-                        Container(width: 1, height: 16, color: theme.colorScheme.outlineVariant),
+                      if (series.restSeconds != null &&
+                          series.restSeconds! > 0) ...[
+                        Container(
+                          width: 1,
+                          height: 16,
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         const Spacer(),
                         Text(
                           series.restSeconds! >= 60
@@ -396,7 +475,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                           ),
                         ),
                         if (series.restSeconds! >= 60)
-                          const Text(" pausa", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const Text(
+                            " pausa",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
                       ],
                     ],
                   ),
@@ -406,21 +488,33 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
 
                 // Botão de Check (Independente do card)
                 InkWell(
-                  onTap: () => _toggleSeries(series),
+                  onTap: () {
+                    if (exerciseId != null) {
+                      controller.toggleSeries(series, exerciseId);
+                    }
+                  },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isDone ? theme.colorScheme.primary : Colors.transparent,
+                      color: isDone
+                          ? theme.colorScheme.primary
+                          : Colors.transparent,
                       border: Border.all(
-                        color: isDone ? theme.colorScheme.primary : theme.colorScheme.outline,
+                        color: isDone
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline,
                         width: 2,
                       ),
                     ),
                     child: isDone
-                        ? Icon(Icons.check, size: 20, color: theme.colorScheme.onPrimary)
+                        ? Icon(
+                            Icons.check,
+                            size: 20,
+                            color: theme.colorScheme.onPrimary,
+                          )
                         : null,
                   ),
                 ),
@@ -432,48 +526,20 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  void _toggleSeries(WorkoutSeries series) {
-    setState(() {
-      _hasChanges = true;
-      if (_completedSeriesIds.contains(series.id)) {
-        _completedSeriesIds.remove(series.id);
-      } else {
-        _completedSeriesIds.add(series.id!);
-
-        // 1. Atualiza a ficha (para o peso ficar salvo no card)
-        DatabaseHelper().updateSeries(
-          series.id!,
-          series.weight ?? 0,
-          series.repetitions ?? 0,
-          true,
-          series.type.name,
-        );
-
-        if (series.type == SeriesType.valid ||
-            series.type == SeriesType.dropset ||
-            series.type == SeriesType.failure) {
-
-          final exerciseId = widget.exercises
-              .firstWhere((e) => e.series.contains(series))
-              .exercise
-              ?.id;
-
-          if (exerciseId != null) {
-            DatabaseHelper().logSeriesCompletion(
-              exerciseId,
-              series.weight ?? 0,
-              series.repetitions ?? 0
-            );
-          }
-        }
-      }
-    });
-  }
-
-  void _showEditDialog(WorkoutSeries series) {
-    final weightCtrl = TextEditingController(text: series.weight?.toString() ?? "");
-    final repsCtrl = TextEditingController(text: series.repetitions?.toString() ?? "");
-    final restCtrl = TextEditingController(text: series.restSeconds?.toString() ?? "");
+  void _showEditDialog(
+    BuildContext context,
+    WorkoutSeries series,
+    WorkoutExecutionController controller,
+  ) {
+    final weightCtrl = TextEditingController(
+      text: series.weight?.toString() ?? "",
+    );
+    final repsCtrl = TextEditingController(
+      text: series.repetitions?.toString() ?? "",
+    );
+    final restCtrl = TextEditingController(
+      text: series.restSeconds?.toString() ?? "",
+    );
 
     showDialog(
       context: context,
@@ -486,11 +552,15 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           children: [
             TextField(
               controller: weightCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
               decoration: InputDecoration(
                 labelText: "Carga (kg)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -499,7 +569,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Repetições",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -508,7 +580,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Descanso (segundos)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -520,22 +594,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              setState(() {
-                _hasChanges = true;
-                series.weight = double.tryParse(weightCtrl.text.replaceAll(',', '.'));
-                series.repetitions = int.tryParse(repsCtrl.text);
-                series.restSeconds = int.tryParse(restCtrl.text);
-              });
+              final weight =
+                  double.tryParse(weightCtrl.text.replaceAll(',', '.')) ?? 0;
+              final reps = int.tryParse(repsCtrl.text) ?? 0;
+              final rest = int.tryParse(restCtrl.text);
 
-              // Atualiza a ficha
-              await DatabaseHelper().updateSeries(
-                series.id!,
-                series.weight ?? 0,
-                series.repetitions ?? 0,
-                _completedSeriesIds.contains(series.id),
-                series.type.name,
-                restSeconds: series.restSeconds,
-              );
+              await controller.updateSeriesValues(series, weight, reps, rest);
 
               if (context.mounted) {
                 Navigator.pop(context);
@@ -548,7 +612,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
     );
   }
 
-  void _showExerciseDetails(BuildContext context, WorkoutExercise workoutExercise) {
+  void _showExerciseDetails(
+    BuildContext context,
+    WorkoutExercise workoutExercise,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -563,7 +630,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               padding: const EdgeInsets.all(24),
               child: ListView(
@@ -582,12 +651,16 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                   const SizedBox(height: 20),
                   Text(
                     "Progresso de Carga",
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     "Histórico para ${workoutExercise.exercise?.name}",
-                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                   const SizedBox(height: 32),
 
@@ -595,7 +668,8 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     FutureBuilder<List<ProgressionPoint>>(
                       future: _loadHistory(workoutExercise.exercise!.id!),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const SizedBox(
                             height: 250,
                             child: Center(child: CircularProgressIndicator()),
@@ -606,13 +680,14 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                             height: 150,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16)
+                              color: Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Text("Nenhum histórico registrado ainda."),
+                            child: const Text(
+                              "Nenhum histórico registrado ainda.",
+                            ),
                           );
                         }
-                        // Seu gráfico atualizado
                         return ProgressionChart(
                           data: snapshot.data!,
                           height: 250,
@@ -623,14 +698,6 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
                     ),
 
                   const SizedBox(height: 32),
-                  const Divider(),
-                  const SizedBox(height: 16),
-
-                  if (workoutExercise.exercise?.description != null) ...[
-                    Text("Instruções", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(workoutExercise.exercise!.description!, style: theme.textTheme.bodyMedium),
-                  ],
                 ],
               ),
             );
@@ -641,19 +708,28 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
   }
 
   Future<List<ProgressionPoint>> _loadHistory(int exerciseId) async {
-    // Busca do novo método getExerciseHistory que une histórico + treino atual
-    final rawData = await DatabaseHelper().getExerciseHistory(exerciseId);
-    return rawData.map((row) {
-      DateTime date;
-      if (row['created_at'] is int) {
-        date = DateTime.fromMillisecondsSinceEpoch(row['created_at']);
-      } else {
-        date = DateTime.parse(row['created_at'].toString());
-      }
-      return ProgressionPoint(
-        date: date,
-        weight: (row['weight'] as num).toDouble(),
-      );
-    }).toList();
+    final rawData = await HistoryRepository().getExerciseHistory(exerciseId);
+    return rawData
+        .where((row) {
+          // Filtra séries de aquecimento/reconhecimento
+          // Garante que o valor seja tratado como int (0 ou 1)
+          final isWarmupVal = row['is_warmup'];
+          final isWarmup = isWarmupVal == 1 || isWarmupVal == true;
+          return !isWarmup;
+        })
+        .map((row) {
+          DateTime date;
+          if (row['created_at'] is int) {
+            date = DateTime.fromMillisecondsSinceEpoch(row['created_at']);
+          } else {
+            date = DateTime.parse(row['created_at'].toString());
+          }
+          return ProgressionPoint(
+            date: date,
+            weight: (row['weight'] as num).toDouble(),
+            sessionId: row['session_id'] as int?,
+          );
+        })
+        .toList();
   }
 }

@@ -3,6 +3,7 @@ import '../repositories/workout_repository.dart';
 import '../repositories/exercise_repository.dart';
 import '../repositories/workout_exercise_repository.dart';
 import '../repositories/series_repository.dart';
+import '../repositories/history_repository.dart';
 import '../database/database_helper.dart';
 
 class DatabaseService {
@@ -13,8 +14,10 @@ class DatabaseService {
   final RoutineRepository routines = RoutineRepository();
   final WorkoutRepository workouts = WorkoutRepository();
   final ExerciseRepository exercises = ExerciseRepository();
-  final WorkoutExerciseRepository workoutExercises = WorkoutExerciseRepository();
+  final WorkoutExerciseRepository workoutExercises =
+      WorkoutExerciseRepository();
   final SeriesRepository series = SeriesRepository();
+  final HistoryRepository history = HistoryRepository();
 
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
@@ -46,15 +49,13 @@ class DatabaseService {
 
     int totalSeries = 0;
     for (var workout in workoutsList) {
-      final workoutExercisesList = await workoutExercises.getWorkoutExercisesWithDetails(workout.id!);
+      final workoutExercisesList = await workoutExercises
+          .getWorkoutExercisesWithDetails(workout.id!);
       for (var workoutExercise in workoutExercisesList) {
         totalSeries += await series.getSeriesCount(workoutExercise.id!);
       }
     }
 
-    return {
-      ...routineStats,
-      'total_series': totalSeries,
-    };
+    return {...routineStats, 'total_series': totalSeries};
   }
 }

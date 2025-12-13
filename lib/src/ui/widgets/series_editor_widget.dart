@@ -54,7 +54,6 @@ class SeriesEditorWidget extends StatelessWidget {
   Widget _buildHeader(BuildContext context, SeriesEditorController controller) {
     return Row(
       children: [
-        const Icon(Icons.fitness_center, color: Colors.indigo),
         const SizedBox(width: 8),
         Text(
           'Séries (${controller.seriesCount})',
@@ -64,7 +63,7 @@ class SeriesEditorWidget extends StatelessWidget {
         ),
         const Spacer(),
         PopupMenuButton<SeriesType>(
-          icon: const Icon(Icons.add_circle, color: Colors.indigo),
+          icon: const Icon(Icons.add_circle),
           tooltip: 'Adicionar Série',
           onSelected: (type) => controller.addSeries(type),
           itemBuilder: (context) => SeriesType.values.map((type) {
@@ -382,7 +381,6 @@ class _SeriesCardState extends State<_SeriesCard> {
                     decoration: const InputDecoration(
                       labelText: 'Repetições',
                       hintText: '12',
-                      prefixIcon: Icon(Icons.repeat),
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -404,7 +402,6 @@ class _SeriesCardState extends State<_SeriesCard> {
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',
                       hintText: '20.0',
-                      prefixIcon: Icon(Icons.fitness_center),
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -424,7 +421,6 @@ class _SeriesCardState extends State<_SeriesCard> {
                   ? 'Tempo (segundos)'
                   : 'Descanso (segundos)',
               hintText: _selectedType == SeriesType.rest ? '30' : '60',
-              prefixIcon: const Icon(Icons.timer),
               border: const OutlineInputBorder(),
               isDense: true,
             ),
@@ -443,7 +439,6 @@ class _SeriesCardState extends State<_SeriesCard> {
       decoration: const InputDecoration(
         labelText: 'Notas (opcional)',
         hintText: 'Ex: Aumentar peso na próxima...',
-        prefixIcon: Icon(Icons.notes),
         border: OutlineInputBorder(),
         isDense: true,
       ),

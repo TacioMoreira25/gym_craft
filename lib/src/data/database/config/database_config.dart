@@ -1,25 +1,27 @@
 class DatabaseConfig {
   static const String databaseName = 'workout_app.db';
-  static const int currentVersion = 3;
-  
+  static const int currentVersion = 4;
+
   static const String routinesTable = 'routines';
   static const String workoutsTable = 'workouts';
   static const String exercisesTable = 'exercises';
   static const String workoutExercisesTable = 'workout_exercises';
   static const String seriesTable = 'series';
-  
+
   static const Map<String, String> createTableQueries = {
-    routinesTable: '''
+    routinesTable:
+        '''
       CREATE TABLE $routinesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        description TEXT, 
+        description TEXT,
         created_at INTEGER NOT NULL,
         is_active INTEGER NOT NULL DEFAULT 1
       )
     ''',
-    
-    workoutsTable: '''
+
+    workoutsTable:
+        '''
       CREATE TABLE $workoutsTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         routine_id INTEGER NOT NULL,
@@ -29,8 +31,9 @@ class DatabaseConfig {
         FOREIGN KEY (routine_id) REFERENCES $routinesTable (id) ON DELETE CASCADE
       )
     ''',
-    
-    exercisesTable: '''
+
+    exercisesTable:
+        '''
       CREATE TABLE $exercisesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
@@ -42,8 +45,9 @@ class DatabaseConfig {
         image_url TEXT
       )
     ''',
-    
-    workoutExercisesTable: '''
+
+    workoutExercisesTable:
+        '''
       CREATE TABLE $workoutExercisesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         workout_id INTEGER NOT NULL,
@@ -55,8 +59,9 @@ class DatabaseConfig {
         FOREIGN KEY (exercise_id) REFERENCES $exercisesTable (id) ON DELETE CASCADE
       )
     ''',
-    
-    seriesTable: '''
+
+    seriesTable:
+        '''
       CREATE TABLE $seriesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         workout_exercise_id INTEGER NOT NULL,
@@ -71,7 +76,7 @@ class DatabaseConfig {
       )
     ''',
   };
-  
+
   static const List<String> createIndexQueries = [
     'CREATE INDEX IF NOT EXISTS idx_workout_routine ON $workoutsTable(routine_id)',
     'CREATE INDEX IF NOT EXISTS idx_exercise_category ON $exercisesTable(category)',

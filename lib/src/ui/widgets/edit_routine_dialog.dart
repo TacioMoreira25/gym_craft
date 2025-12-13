@@ -85,7 +85,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
-          Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
+          Icon(Icons.edit, color: Colors.blue),
           const SizedBox(width: 8),
           Text(
             'Editar Rotina',
@@ -109,7 +109,6 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Nome da Rotina',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.bookmark),
                 ),
                 validator: ValidationUtils.validateRoutineName,
               ),
@@ -121,7 +120,6 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Descrição',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
                 ),
                 maxLines: 3,
               ),

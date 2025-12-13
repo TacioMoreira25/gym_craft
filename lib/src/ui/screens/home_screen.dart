@@ -104,7 +104,7 @@ class _HomeScreenView extends StatelessWidget {
             body: _buildBody(context, controller, theme),
             floatingActionButton: controller.isReorderMode
                 ? null
-                : FloatingActionButton.extended(
+                : FloatingActionButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -113,8 +113,7 @@ class _HomeScreenView extends StatelessWidget {
                         ),
                       ).then((_) => controller.loadRoutines());
                     },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Nova Rotina'),
+                    child: const Icon(Icons.add),
                   ),
           ),
         );
@@ -750,10 +749,38 @@ class _HomeScreenView extends StatelessWidget {
                   size: 20,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Editar')),
-                  PopupMenuItem(value: 'delete', child: Text('Excluir')),
-                ],
+                itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: Colors.blue ,size: 18),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Excluir',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 onSelected: (value) {
                   if (value == 'edit') {
                     _showEditWorkoutDialog(
@@ -813,22 +840,32 @@ class _HomeScreenView extends StatelessWidget {
           value: 'edit',
           child: Row(
             children: [
-              Icon(Icons.edit, size: 18),
+              Icon(Icons.edit, color: Colors.blue ,size: 18),
               SizedBox(width: 8),
               Text('Editar'),
             ],
           ),
         ),
-        const PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete, size: 18),
-              SizedBox(width: 8),
-              Text('Excluir'),
-            ],
-          ),
-        ),
+        PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Excluir',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
       ],
       onSelected: (value) {
         if (value == 'delete') {

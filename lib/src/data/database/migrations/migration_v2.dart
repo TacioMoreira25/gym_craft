@@ -18,7 +18,7 @@ class MigrationV2 extends Migration {
       await _migrateRoutines(db);
       await _migrateExercises(db);
       await _migrateWorkoutExercises(db);
-      await _ensureSeriesTable(db); 
+      await _ensureSeriesTable(db);
       await _verifyDefaultExercises(db);
 
       print('Migração V2 concluída com sucesso');
@@ -36,7 +36,6 @@ class MigrationV2 extends Migration {
 
   Future<void> _migrateRoutines(Database db) async {
     try {
-      // Verificar se tabela existe
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='${DatabaseConfig.routinesTable}'"
       );
@@ -129,26 +128,22 @@ class MigrationV2 extends Migration {
 
   Future<void> _migrateWorkoutExercises(Database db) async {
     try {
-      // ✅ VERIFICAR SE A TABELA JÁ EXISTE
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='${DatabaseConfig.workoutExercisesTable}'"
       );
 
       if (tables.isEmpty) {
-        // Tabela não existe, criar nova
         print('Criando tabela workout_exercises');
         await db.execute(DatabaseConfig.createTableQueries[DatabaseConfig.workoutExercisesTable]!);
         return;
       }
 
-      // Tabela existe, verificar estrutura
       final tableInfo = await db.rawQuery('PRAGMA table_info(${DatabaseConfig.workoutExercisesTable})');
       bool hasRestTime = tableInfo.any((col) => col['name'] == 'rest_time_seconds');
 
       if (!hasRestTime) {
         print('Atualizando estrutura da tabela workout_exercises');
 
-        // Backup dos dados existentes
         List<Map<String, dynamic>> existingData = await db.query(DatabaseConfig.workoutExercisesTable);
 
         if (existingData.isNotEmpty) {

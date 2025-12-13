@@ -121,7 +121,6 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Notas do Exercício (opcional)',
                   hintText: 'Ex: Foco na execução, ajustar postura...',
-                  prefixIcon: Icon(Icons.notes),
                   border: OutlineInputBorder(),
                 ),
               ),
