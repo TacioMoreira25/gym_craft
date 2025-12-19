@@ -7,6 +7,8 @@ import '../../models/series_type.dart';
 import '../../shared/constants/constants.dart';
 import '../controllers/series_editor_controller.dart';
 
+import '../../shared/utils/snackbar_utils.dart';
+
 class SeriesEditorWidget extends StatelessWidget {
   final List<WorkoutSeries> initialSeries;
   final Function(List<WorkoutSeries>) onSeriesChanged;
@@ -57,9 +59,9 @@ class SeriesEditorWidget extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           'Séries (${controller.seriesCount})',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const Spacer(),
         PopupMenuButton<SeriesType>(
@@ -158,9 +160,7 @@ class _SeriesCardState extends State<_SeriesCard> {
     _restController = TextEditingController(
       text: widget.series.restSeconds?.toString() ?? '',
     );
-    _notesController = TextEditingController(
-      text: widget.series.notes ?? '',
-    );
+    _notesController = TextEditingController(text: widget.series.notes ?? '');
   }
 
   void _disposeControllers() {
@@ -244,12 +244,7 @@ class _SeriesCardState extends State<_SeriesCard> {
   void _deleteSeries() {
     final success = widget.controller.removeSeries(widget.index);
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deve haver pelo menos uma série.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarUtils.showWarning(context, 'Deve haver pelo menos uma série.');
     }
   }
 
@@ -276,10 +271,7 @@ class _SeriesCardState extends State<_SeriesCard> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 6,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: AppConstants.getSeriesTypeColor(_selectedType),
             borderRadius: BorderRadius.circular(20),
@@ -346,10 +338,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                   children: [
                     Icon(Icons.delete, size: 16, color: Colors.red),
                     SizedBox(width: 8),
-                    Text(
-                      'Excluir',
-                      style: TextStyle(color: Colors.red),
-                    ),
+                    Text('Excluir', style: TextStyle(color: Colors.red)),
                   ],
                 ),
               ),
@@ -361,9 +350,18 @@ class _SeriesCardState extends State<_SeriesCard> {
   }
 
   Widget _buildFields() {
-    final showReps = widget.controller.shouldShowField(_selectedType, 'repetitions');
-    final showWeight = widget.controller.shouldShowField(_selectedType, 'weight');
-    final showRest = widget.controller.shouldShowField(_selectedType, 'rest_seconds');
+    final showReps = widget.controller.shouldShowField(
+      _selectedType,
+      'repetitions',
+    );
+    final showWeight = widget.controller.shouldShowField(
+      _selectedType,
+      'weight',
+    );
+    final showRest = widget.controller.shouldShowField(
+      _selectedType,
+      'rest_seconds',
+    );
 
     return Column(
       children: [
@@ -375,9 +373,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                   child: TextField(
                     controller: _repsController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
                       labelText: 'Repetições',
                       hintText: '12',
@@ -395,9 +391,7 @@ class _SeriesCardState extends State<_SeriesCard> {
                       decimal: true,
                     ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d*'),
-                      ),
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                     ],
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',

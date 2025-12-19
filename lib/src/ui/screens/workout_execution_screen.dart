@@ -7,6 +7,7 @@ import 'package:gym_craft/src/ui/widgets/exercise_image_widget.dart';
 import 'package:gym_craft/src/ui/widgets/progression_chart.dart';
 import 'package:gym_craft/src/data/repositories/history_repository.dart';
 import 'package:gym_craft/src/shared/constants/constants.dart';
+import '../widgets/app_dialog.dart';
 
 class WorkoutExecutionScreen extends StatelessWidget {
   final int? workoutId;
@@ -125,26 +126,14 @@ class _WorkoutExecutionViewState extends State<_WorkoutExecutionView> {
   ) async {
     if (!controller.hasChanges) return true;
 
-    return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Sair do Treino?"),
-            content: const Text(
-              "Se sair agora, o progresso marcado será salvo, mas o treino não será finalizado oficialmente. Deseja sair?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text("Continuar Treinando"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text("Sair"),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    return await AppDialog.showConfirmation(
+      context,
+      title: "Sair do Treino?",
+      content:
+          "Se sair agora, o progresso marcado será salvo, mas o treino não será finalizado oficialmente. Deseja sair?",
+      confirmText: "Sair",
+      cancelText: "Continuar Treinando",
+    );
   }
 
   Widget _buildFinishScreen(
@@ -543,10 +532,8 @@ class _WorkoutExecutionViewState extends State<_WorkoutExecutionView> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Editar Série ${series.seriesNumber}"),
+      builder: (context) => AppDialog(
+        title: "Editar Série ${series.seriesNumber}",
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -592,7 +579,7 @@ class _WorkoutExecutionViewState extends State<_WorkoutExecutionView> {
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancelar"),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               final weight =
                   double.tryParse(weightCtrl.text.replaceAll(',', '.')) ?? 0;

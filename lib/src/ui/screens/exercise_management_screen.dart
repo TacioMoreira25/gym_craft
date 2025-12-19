@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import '../../models/exercise.dart';
 import '../widgets/edit_exercise_dialog.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../widgets/ImageViewerDialog.dart';
+import '../widgets/app_dialog.dart';
 import '../../shared/utils/snackbar_utils.dart';
 import '../../shared/constants/constants.dart';
 import '../controllers/exercise_management_controller.dart';
@@ -223,10 +226,23 @@ class _ExerciseManagementView extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: ExerciseImageWidget(
-          imageUrl: exercise.imageUrl,
-          width: 50,
-          height: 50,
+        leading: GestureDetector(
+          onTap: () {
+            if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) {
+              showDialog(
+                context: context,
+                builder: (context) => ImageViewerDialog(
+                  imageUrl: exercise.imageUrl,
+                  exerciseName: exercise.name,
+                ),
+              );
+            }
+          },
+          child: ExerciseImageWidget(
+            imageUrl: exercise.imageUrl,
+            width: 50,
+            height: 50,
+          ),
         ),
         title: Text(
           exercise.name,
@@ -279,12 +295,15 @@ class _ExerciseManagementView extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue[100],
+                      color: AppTheme.primaryBlue.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       'Personalizado',
-                      style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryBlue,
+                      ),
                     ),
                   ),
                 ],
@@ -308,32 +327,32 @@ class _ExerciseManagementView extends StatelessWidget {
               value: 'edit',
               child: Row(
                 children: [
-                  Icon(Icons.edit, size: 20, color: Colors.blue),
+                  Icon(Icons.edit, size: 20, color: AppTheme.primaryBlue),
                   SizedBox(width: 8),
                   Text('Editar'),
                 ],
               ),
             ),
-           PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: theme.colorScheme.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Excluir',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.error,
-                            ),
-                          ),
-                        ],
-                      ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: theme.colorScheme.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Excluir',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.error,
                     ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         onTap: () => _editExercise(context, controller, exercise),
@@ -373,6 +392,7 @@ class _ExerciseManagementView extends StatelessWidget {
     ExerciseManagementController controller,
     Exercise exercise,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     final canDelete = await controller.canDeleteExercise(exercise.id!);
 
     if (!context.mounted) return;
@@ -385,35 +405,27 @@ class _ExerciseManagementView extends StatelessWidget {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Exclusão'),
-        content: Text(
-          'Deseja realmente excluir o exercício "${exercise.name}"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Confirmar Exclusão',
+      content: 'Deseja realmente excluir o exercício "${exercise.name}"?',
+      confirmText: 'Excluir',
+      isDestructive: true,
     );
 
-    if (confirmed == true && context.mounted) {
-      await controller.deleteExercise(exercise);
-      if (context.mounted) {
+    if (confirmed && context.mounted) {
+      try {
+        await controller.deleteExercise(exercise);
         if (controller.hasError) {
-          SnackBarUtils.showError(context, controller.errorMessage!);
+          SnackBarUtils.showErrorAt(messenger, controller.errorMessage!);
         } else {
-          SnackBarUtils.showSuccess(context, 'Exercício excluído com sucesso!');
+          SnackBarUtils.showDeleteSuccessAt(
+            messenger,
+            'Exercício excluído com sucesso!',
+          );
         }
+      } catch (e) {
+        SnackBarUtils.showErrorAt(messenger, 'Erro ao excluir exercício: $e');
       }
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gym_craft/src/shared/constants/constants.dart';
+import '../theme/app_theme.dart';
 import '../../data/services/database_service.dart';
 import '../../models/exercise.dart';
 import 'base_controller.dart';
@@ -88,7 +89,7 @@ class SelectExerciseController extends BaseController {
 
   Color getCategoryColor(String category) {
     if (category == 'Todos') {
-      return Colors.indigo;
+      return AppTheme.primaryBlue;
     }
     return AppConstants.getMuscleGroupColor(category);
   }

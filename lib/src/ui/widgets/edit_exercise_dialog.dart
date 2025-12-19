@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import '../../models/exercise.dart';
 import 'exercise_image_widget.dart';
 import '../../shared/utils/validation_utils.dart';
 import '../../shared/utils/snackbar_utils.dart';
 import '../controllers/edit_exercise_controller.dart';
+import 'app_dialog.dart';
 
 class EditExerciseDialog extends StatelessWidget {
   final Exercise? exercise;
@@ -23,26 +25,13 @@ class EditExerciseDialog extends StatelessWidget {
           EditExerciseController(exercise: exercise, onUpdated: onUpdated),
       child: Consumer<EditExerciseController>(
         builder: (context, controller, child) {
-          return AlertDialog(
-            title: _buildTitle(controller),
+          return AppDialog(
+            title: controller.dialogTitle,
             content: _buildContent(context, controller),
             actions: _buildActions(context, controller),
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTitle(EditExerciseController controller) {
-    return Row(
-      children: [
-        Icon(
-          controller.isEditing ? Icons.edit : Icons.add,
-          color: Colors.indigo,
-        ),
-        const SizedBox(width: 8),
-        Text(controller.dialogTitle),
-      ],
     );
   }
 
@@ -122,8 +111,8 @@ class EditExerciseDialog extends StatelessWidget {
                     icon: const Icon(Icons.search),
                     tooltip: 'Buscar imagem no Google',
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.blue[50],
-                      foregroundColor: Colors.blue[700],
+                      backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+                      foregroundColor: AppTheme.primaryBlue,
                       padding: const EdgeInsets.all(12),
                     ),
                   ),
@@ -240,51 +229,17 @@ class EditExerciseDialog extends StatelessWidget {
   Widget _buildImageTip() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        color: AppTheme.primaryBlue.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.search, color: Colors.blue[700], size: 16),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '1. Clique em "🔍" para buscar no Google Imagens',
-                  style: TextStyle(fontSize: 11, color: Colors.blue[700]),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Icon(Icons.content_copy, color: Colors.blue[700], size: 16),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '2. Clique direito na imagem → "Copiar endereço da imagem"',
-                  style: TextStyle(fontSize: 11, color: Colors.blue[700]),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Icon(Icons.auto_fix_high, color: Colors.blue[700], size: 16),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '3. O app detectará automaticamente e sugerirá o uso!',
-                  style: TextStyle(fontSize: 11, color: Colors.blue[700]),
-                ),
-              ),
-            ],
+          Text(
+            'Dica: Busque no Google Imagens, copie o endereço da imagem e o app detectará automaticamente.',
+            style: TextStyle(fontSize: 12, color: AppTheme.primaryBlueDark),
           ),
         ],
       ),
@@ -296,9 +251,9 @@ class EditExerciseDialog extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
+        color: AppTheme.primaryBlue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[300]!),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.5)),
       ),
     );
   }
@@ -318,12 +273,6 @@ class EditExerciseDialog extends StatelessWidget {
         onPressed: controller.isLoading
             ? null
             : () => _saveExercise(context, controller),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigo[700],
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
         child: controller.isLoading
             ? const SizedBox(
                 width: 20,
@@ -354,7 +303,11 @@ class EditExerciseDialog extends StatelessWidget {
     if (context.mounted) {
       if (success) {
         Navigator.of(context).pop();
-        SnackBarUtils.showSuccess(context, controller.successMessage);
+        if (controller.isEditing) {
+          SnackBarUtils.showUpdateSuccess(context, controller.successMessage);
+        } else {
+          SnackBarUtils.showAddSuccess(context, controller.successMessage);
+        }
       } else if (controller.hasError) {
         SnackBarUtils.showError(context, controller.errorMessage!);
       }

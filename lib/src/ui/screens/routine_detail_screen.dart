@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import '../../models/routine.dart';
 import '../../models/workout.dart';
 import '../../shared/utils/snackbar_utils.dart';
@@ -7,6 +8,7 @@ import '../controllers/routine_detail_controller.dart';
 import 'create_workout_screen.dart';
 import 'workout_detail_screen.dart';
 import '../widgets/edit_workout_dialog.dart';
+import '../widgets/app_dialog.dart';
 
 class RoutineDetailScreen extends StatefulWidget {
   final Routine routine;
@@ -105,28 +107,25 @@ class _RoutineDetailView extends StatelessWidget {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurface,
+          color: theme.appBarTheme.foregroundColor,
         ),
       ),
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
       leading: controller.isReorderMode
           ? IconButton(
-              icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
+              icon: const Icon(Icons.close),
               onPressed: () => controller.exitReorderMode(),
             )
           : IconButton(
-              icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+              icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
         if (!controller.isReorderMode && controller.workouts.isNotEmpty)
           IconButton(
             onPressed: () => controller.enableReorderMode(),
-            icon: Icon(
-              Icons.reorder,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            icon: const Icon(Icons.reorder),
             tooltip: 'Reordenar',
           ),
         if (controller.isReorderMode)
@@ -137,7 +136,7 @@ class _RoutineDetailView extends StatelessWidget {
                 SnackBarUtils.showSuccess(context, 'Ordem salva');
               }
             },
-            icon: Icon(Icons.check, color: theme.colorScheme.primary),
+            icon: const Icon(Icons.check),
             tooltip: 'Salvar',
           ),
       ],
@@ -486,11 +485,7 @@ class _RoutineDetailView extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.more_vert, size: 20),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -506,7 +501,11 @@ class _RoutineDetailView extends StatelessWidget {
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit, color: Colors.blue ,size: 18),
+                          Icon(
+                            Icons.edit,
+                            color: AppTheme.primaryBlue,
+                            size: 18,
+                          ),
                           SizedBox(width: 8),
                           Text('Editar'),
                         ],
@@ -585,6 +584,7 @@ class _RoutineDetailView extends StatelessWidget {
   }
 
   Widget _buildFAB(BuildContext context, RoutineDetailController controller) {
+    final theme = Theme.of(context);
     return FloatingActionButton(
       onPressed: () {
         Navigator.push(
@@ -617,37 +617,26 @@ class _RoutineDetailView extends StatelessWidget {
     BuildContext context,
     RoutineDetailController controller,
     Workout workout,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir treino?'),
-        content: Text(
-          'O treino "${workout.name}" será excluído permanentemente.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                await controller.deleteWorkout(workout.id!);
-                if (context.mounted) {
-                  SnackBarUtils.showSuccess(context, 'Treino excluído');
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  SnackBarUtils.showError(context, 'Erro ao excluir treino');
-                }
-              }
-            },
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+  ) async {
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Excluir treino?',
+      content: 'O treino "${workout.name}" será excluído permanentemente.',
+      confirmText: 'Excluir',
+      isDestructive: true,
     );
+
+    if (confirmed && context.mounted) {
+      try {
+        await controller.deleteWorkout(workout.id!);
+        if (context.mounted) {
+          SnackBarUtils.showSuccess(context, 'Treino excluído');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          SnackBarUtils.showError(context, 'Erro ao excluir treino');
+        }
+      }
+    }
   }
 }

@@ -66,7 +66,6 @@ class ThemeProvider with ChangeNotifier {
   }
 }
 
-// main.dart - How to integrate the themes
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

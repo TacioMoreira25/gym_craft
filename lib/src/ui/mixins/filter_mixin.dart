@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../../models/exercise.dart';
 import '../../shared/constants/constants.dart';
 
-/// Mixin para reutilizar lógica de filtros de exercícios
 mixin FilterMixin<T extends StatefulWidget> on State<T> {
-  // Variáveis de filtro que devem ser declaradas nas classes que usam o mixin
   List<Exercise> get allExercises;
   List<Exercise> get filteredExercises;
   String get selectedCategory;
@@ -13,22 +12,18 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
   set filteredExercises(List<Exercise> value);
   set selectedCategory(String value);
 
-  // Lista de categorias padrão
   List<String> get categories => ['Todos', ...AppConstants.muscleGroups];
 
-  /// Aplica filtros de categoria e busca aos exercícios
   void applyFilters() {
     setState(() {
       List<Exercise> filtered = allExercises;
 
-      // Filtrar por categoria
       if (selectedCategory != 'Todos') {
         filtered = filtered
             .where((e) => e.category == selectedCategory)
             .toList();
       }
 
-      // Filtrar por busca
       final searchQuery = searchController.text.toLowerCase();
       if (searchQuery.isNotEmpty) {
         filtered = filtered
@@ -44,7 +39,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
-  /// Limpa os filtros aplicados
   void clearFilters() {
     setState(() {
       selectedCategory = 'Todos';
@@ -53,7 +47,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
-  /// Filtra por categoria específica
   void filterByCategory(String category) {
     setState(() {
       selectedCategory = category;
@@ -61,7 +54,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
-  /// Widget para construir chips de filtro de categoria
   Widget buildCategoryFilters({
     required Function(String) onCategorySelected,
     EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 16),
@@ -96,7 +88,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// Widget para construir campo de busca
   Widget buildSearchField({
     String hintText = 'Buscar exercícios...',
     EdgeInsets padding = const EdgeInsets.all(16),
@@ -124,7 +115,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// Widget para mostrar contador de resultados
   Widget buildResultsCounter({
     EdgeInsets padding = const EdgeInsets.symmetric(
       horizontal: 16,
@@ -147,7 +137,6 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// Widget para estado vazio com opções de limpeza de filtros
   Widget buildEmptyState({
     String emptyMessage = 'Nenhum exercício encontrado',
     String searchEmptyMessage = 'Nenhum resultado encontrado',
@@ -191,7 +180,7 @@ mixin FilterMixin<T extends StatefulWidget> on State<T> {
   /// Helper para obter cor da categoria
   Color _getCategoryColor(String category) {
     if (category == 'Todos') {
-      return Colors.indigo;
+      return AppTheme.primaryBlue;
     }
     return AppConstants.getMuscleGroupColor(category);
   }

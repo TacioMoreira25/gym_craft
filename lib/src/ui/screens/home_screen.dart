@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import '../../models/routine.dart';
 import '../../models/workout.dart';
 import '../../shared/utils/snackbar_utils.dart';
@@ -11,6 +12,7 @@ import 'routine_detail_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/edit_routine_dialog.dart';
 import '../widgets/edit_workout_dialog.dart';
+import '../widgets/app_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -77,7 +79,7 @@ class _HomeScreenView extends StatelessWidget {
                     onPressed: () async {
                       await controller.saveReorderAndExit();
                       if (context.mounted) {
-                        SnackBarUtils.showSuccess(context, 'Ordem salva');
+                        SnackBarUtils.showUpdateSuccess(context, 'Ordem salva');
                       }
                     },
                     icon: Icon(Icons.check, color: theme.colorScheme.primary),
@@ -750,37 +752,37 @@ class _HomeScreenView extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, color: Colors.blue ,size: 18),
-                          SizedBox(width: 8),
-                          Text('Editar'),
-                        ],
-                      ),
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, color: AppTheme.primaryBlue, size: 18),
+                        SizedBox(width: 8),
+                        Text('Editar'),
+                      ],
                     ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 16,
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Excluir',
+                          style: TextStyle(
+                            fontSize: 14,
                             color: theme.colorScheme.error,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Excluir',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.error,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
                 onSelected: (value) {
                   if (value == 'edit') {
                     _showEditWorkoutDialog(
@@ -834,38 +836,35 @@ class _HomeScreenView extends StatelessWidget {
     ThemeData theme,
   ) {
     return PopupMenuButton(
-      icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurfaceVariant),
+      icon: const Icon(Icons.more_vert),
       itemBuilder: (context) => [
         const PopupMenuItem(
           value: 'edit',
           child: Row(
             children: [
-              Icon(Icons.edit, color: Colors.blue ,size: 18),
+              Icon(Icons.edit, color: AppTheme.primaryBlue, size: 18),
               SizedBox(width: 8),
               Text('Editar'),
             ],
           ),
         ),
         PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: theme.colorScheme.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Excluir',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.error,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Excluir',
+                style: TextStyle(fontSize: 14, color: theme.colorScheme.error),
+              ),
+            ],
+          ),
+        ),
       ],
       onSelected: (value) {
         if (value == 'delete') {
@@ -895,33 +894,27 @@ class _HomeScreenView extends StatelessWidget {
     BuildContext context,
     HomeController controller,
     Routine routine,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir Rotina'),
-        content: Text('Tem certeza que deseja excluir "${routine.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await controller.deleteRoutine(routine.id!);
-              if (context.mounted) {
-                SnackBarUtils.showSuccess(
-                  context,
-                  'Rotina "${routine.name}" excluída!',
-                );
-              }
-            },
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Excluir Rotina',
+      content: 'Tem certeza que deseja excluir "${routine.name}"?',
+      confirmText: 'Excluir',
+      isDestructive: true,
     );
+
+    if (confirmed && context.mounted) {
+      try {
+        await controller.deleteRoutine(routine.id!);
+        SnackBarUtils.showDeleteSuccessAt(
+          messenger,
+          'Rotina "${routine.name}" excluída!',
+        );
+      } catch (e) {
+        SnackBarUtils.showErrorAt(messenger, 'Erro ao excluir rotina: $e');
+      }
+    }
   }
 
   void _showEditWorkoutDialog(
@@ -944,42 +937,30 @@ class _HomeScreenView extends StatelessWidget {
     HomeController controller,
     Routine routine,
     Workout workout,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir Treino'),
-        content: Text('Excluir "${workout.name}" desta rotina?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                await controller.deleteWorkout(workout.id!);
-                await controller.refreshRoutineWorkouts(routine.id!);
-                if (context.mounted) {
-                  SnackBarUtils.showSuccess(
-                    context,
-                    'Treino "${workout.name}" excluído',
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  SnackBarUtils.showError(
-                    context,
-                    'Erro ao excluir treino: $e',
-                  );
-                }
-              }
-            },
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+  ) async {
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Excluir Treino',
+      content: 'Excluir "${workout.name}" desta rotina?',
+      confirmText: 'Excluir',
+      isDestructive: true,
     );
+
+    if (confirmed && context.mounted) {
+      try {
+        await controller.deleteWorkout(workout.id!);
+        await controller.refreshRoutineWorkouts(routine.id!);
+        if (context.mounted) {
+          SnackBarUtils.showDeleteSuccess(
+            context,
+            'Treino "${workout.name}" excluído',
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          SnackBarUtils.showError(context, 'Erro ao excluir treino: $e');
+        }
+      }
+    }
   }
 }

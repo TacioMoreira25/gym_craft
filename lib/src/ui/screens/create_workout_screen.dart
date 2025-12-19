@@ -270,7 +270,7 @@ class _CreateWorkoutView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
@@ -279,13 +279,17 @@ class _CreateWorkoutView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.lightbulb_outlined, color: theme.colorScheme.tertiary),
+              Icon(
+                Icons.lightbulb_outlined,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Após salvar:',
-                style: TextStyle(
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onTertiaryContainer,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -310,7 +314,7 @@ class _CreateWorkoutView extends StatelessWidget {
     final success = await controller.saveWorkout();
 
     if (success && context.mounted) {
-      SnackBarUtils.showSuccess(context, 'Treino criado com sucesso!');
+      SnackBarUtils.showAddSuccess(context, 'Treino criado com sucesso!');
       Navigator.of(context).pop();
     }
   }

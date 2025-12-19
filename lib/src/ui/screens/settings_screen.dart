@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/settings_controller.dart';
 import '../providers/theme_provider.dart';
+import '../../shared/utils/snackbar_utils.dart';
+import '../widgets/app_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -197,8 +199,8 @@ class _SettingsView extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(appInfo['name']!),
+      builder: (context) => AppDialog(
+        title: appInfo['name']!,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,8 +227,8 @@ class _SettingsView extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Como usar o GymCraft'),
+      builder: (context) => AppDialog(
+        title: 'Como usar o GymCraft',
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -258,93 +260,52 @@ class _SettingsView extends StatelessWidget {
     await controller.performBackup();
 
     if (context.mounted && controller.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(controller.errorMessage!),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarUtils.showWarning(context, controller.errorMessage!);
       controller.clearError();
     }
   }
 
-  void _showResetDialog(BuildContext context, SettingsController controller) {
-    final theme = Theme.of(context);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Restauração'),
-        content: const Text(
+  void _showResetDialog(
+    BuildContext context,
+    SettingsController controller,
+  ) async {
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Confirmar Restauração',
+      content:
           'Esta ação irá apagar TODOS os seus dados (exercícios, treinos, rotinas, histórico). Esta ação não pode ser desfeita.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showFinalConfirmationDialog(context, controller);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-            ),
-            child: const Text('Restaurar'),
-          ),
-        ],
-      ),
+      confirmText: 'Restaurar',
+      isDestructive: true,
     );
+
+    if (confirmed && context.mounted) {
+      _showFinalConfirmationDialog(context, controller);
+    }
   }
 
   void _showFinalConfirmationDialog(
     BuildContext context,
     SettingsController controller,
-  ) {
-    final theme = Theme.of(context);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ÚLTIMA CONFIRMAÇÃO'),
-        content: const Text(
-          'Tem certeza absoluta? Todos os dados serão perdidos permanentemente.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _handleReset(context, controller);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-            ),
-            child: const Text('CONFIRMAR RESET'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _handleReset(
-    BuildContext context,
-    SettingsController controller,
   ) async {
-    await controller.performReset();
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'ÚLTIMA CONFIRMAÇÃO',
+      content:
+          'Tem certeza absoluta? Todos os dados serão perdidos permanentemente.',
+      confirmText: 'Apagar Tudo',
+      isDestructive: true,
+    );
 
-    if (context.mounted && controller.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(controller.errorMessage!),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      controller.clearError();
+    if (confirmed && context.mounted) {
+      await controller.performReset();
+      if (context.mounted) {
+        if (controller.hasError) {
+          SnackBarUtils.showWarning(context, controller.errorMessage!);
+          controller.clearError();
+        } else {
+          SnackBarUtils.showSuccess(context, 'Dados restaurados com sucesso!');
+        }
+      }
     }
   }
 }

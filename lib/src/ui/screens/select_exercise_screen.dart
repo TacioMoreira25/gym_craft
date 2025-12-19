@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import 'package:gym_craft/src/shared/constants/constants.dart';
 import '../controllers/select_exercise_controller.dart';
 import 'exercise_management_screen.dart';
 import '../../models/exercise.dart';
 import '../widgets/exercise_image_widget.dart';
+import '../widgets/ImageViewerDialog.dart';
+import '../widgets/add_workout_exercise_dialog.dart';
+import '../../shared/utils/snackbar_utils.dart';
 
 class SelectExerciseScreen extends StatelessWidget {
   final List<int> excludeExerciseIds;
+  final int? workoutId;
 
-  const SelectExerciseScreen({Key? key, this.excludeExerciseIds = const []})
-    : super(key: key);
+  const SelectExerciseScreen({
+    Key? key,
+    this.excludeExerciseIds = const [],
+    this.workoutId,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -18,13 +26,15 @@ class SelectExerciseScreen extends StatelessWidget {
       create: (context) =>
           SelectExerciseController(excludeExerciseIds: excludeExerciseIds)
             ..loadExercises(),
-      child: const _SelectExerciseView(),
+      child: _SelectExerciseView(workoutId: workoutId),
     );
   }
 }
 
 class _SelectExerciseView extends StatelessWidget {
-  const _SelectExerciseView();
+  final int? workoutId;
+
+  const _SelectExerciseView({this.workoutId});
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +117,6 @@ class _SelectExerciseView extends StatelessWidget {
             decoration: const InputDecoration(
               hintText: 'Buscar exercícios...',
               prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -174,10 +183,23 @@ class _SelectExerciseView extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: ExerciseImageWidget(
-          imageUrl: exercise.imageUrl,
-          width: 50,
-          height: 50,
+        leading: GestureDetector(
+          onTap: () {
+            if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) {
+              showDialog(
+                context: context,
+                builder: (context) => ImageViewerDialog(
+                  imageUrl: exercise.imageUrl,
+                  exerciseName: exercise.name,
+                ),
+              );
+            }
+          },
+          child: ExerciseImageWidget(
+            imageUrl: exercise.imageUrl,
+            width: 50,
+            height: 50,
+          ),
         ),
         title: Text(
           exercise.name,
@@ -206,20 +228,40 @@ class _SelectExerciseView extends StatelessWidget {
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue[100],
+                  color: AppTheme.primaryBlue.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
                   'Personalizado',
                   style: TextStyle(
                     fontSize: 10,
-                    color: Colors.blue,
+                    color: AppTheme.primaryBlue,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               )
             : null,
-        onTap: () => Navigator.pop(context, exercise),
+        onTap: () {
+          if (workoutId != null) {
+            showDialog(
+              context: context,
+              builder: (context) => AddWorkoutExerciseDialog(
+                workoutId: workoutId!,
+                selectedExercise: exercise,
+                onExerciseAdded: () {
+                  if (context.mounted) {
+                    SnackBarUtils.showAddSuccess(
+                      context,
+                      'Exercício adicionado ao treino!',
+                    );
+                  }
+                },
+              ),
+            );
+          } else {
+            Navigator.pop(context, exercise);
+          }
+        },
       ),
     );
   }

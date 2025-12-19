@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../../models/routine.dart';
 import '../../data/services/database_service.dart';
 import '../../shared/utils/validation_utils.dart';
 import '../../shared/utils/snackbar_utils.dart';
+import 'app_dialog.dart';
 
 class EditRoutineDialog extends StatefulWidget {
   final Routine routine;
@@ -62,7 +64,10 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
-        SnackBarUtils.showSuccess(context, 'Rotina atualizada com sucesso!');
+        SnackBarUtils.showUpdateSuccess(
+          context,
+          'Rotina atualizada com sucesso!',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -79,23 +84,8 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Icon(Icons.edit, color: Colors.blue),
-          const SizedBox(width: 8),
-          Text(
-            'Editar Rotina',
-            style: TextStyle(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+    return AppDialog(
+      title: 'Editar Rotina',
       content: SizedBox(
         width: double.maxFinite,
         child: Form(
@@ -141,7 +131,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                     onChanged: (value) {
                       setState(() => _isActive = value);
                     },
-                    activeColor: Colors.indigo,
+                    activeColor: AppTheme.primaryBlue,
                   ),
                 ],
               ),
@@ -183,16 +173,8 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: _isLoading ? null : _updateRoutine,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo[700],
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
           child: _isLoading
               ? const SizedBox(
                   width: 20,
@@ -202,14 +184,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.save, size: 18),
-                    SizedBox(width: 4),
-                    Text('Salvar'),
-                  ],
-                ),
+              : const Text('Salvar'),
         ),
       ],
     );

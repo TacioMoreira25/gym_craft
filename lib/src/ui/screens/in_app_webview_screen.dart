@@ -89,14 +89,6 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => _controller.reload(),
           ),
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            onPressed: () async {
-              final url = await _controller.currentUrl();
-              if (!context.mounted || url == null) return;
-              // Optionally: attempt external launch from here if desired.
-            },
-          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2),

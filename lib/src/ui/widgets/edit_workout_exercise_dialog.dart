@@ -4,6 +4,7 @@ import 'exercise_image_widget.dart';
 import 'series_editor_widget.dart';
 import '../../shared/utils/snackbar_utils.dart';
 import '../controllers/edit_workout_exercise_controller.dart';
+import 'app_dialog.dart';
 
 class EditWorkoutExerciseDialog extends StatelessWidget {
   final Map<String, dynamic> workoutExerciseData;
@@ -24,79 +25,12 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
       ),
       child: Consumer<EditWorkoutExerciseController>(
         builder: (context, controller, child) {
-          return Dialog(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(context, controller),
-                  _buildContent(context, controller),
-                  _buildActions(context, controller),
-                ],
-              ),
-            ),
+          return AppDialog(
+            title: 'Editar Exercício',
+            content: _buildContent(context, controller),
+            actions: _buildActions(context, controller),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildHeader(
-    BuildContext context,
-    EditWorkoutExerciseController controller,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.1),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ExerciseImageWidget(
-                imageUrl: controller.exerciseImageUrl,
-                category: controller.exerciseCategory,
-                width: 50,
-                height: 50,
-                borderRadius: BorderRadius.circular(10),
-                enableTap: false,
-                exerciseName: controller.exerciseName,
-              ),
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Editar Exercício',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      controller.exerciseName,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -105,14 +39,36 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     BuildContext context,
     EditWorkoutExerciseController controller,
   ) {
-    return Expanded(
+    return SizedBox(
+      width: double.maxFinite,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Form(
           key: controller.formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              Row(
+                children: [
+                  ExerciseImageWidget(
+                    imageUrl: controller.exerciseImageUrl,
+                    category: controller.exerciseCategory,
+                    width: 50,
+                    height: 50,
+                    borderRadius: BorderRadius.circular(10),
+                    enableTap: false,
+                    exerciseName: controller.exerciseName,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      controller.exerciseName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               // Notas do exercício
               TextFormField(
                 controller: controller.notesController,
@@ -174,59 +130,33 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(
+  List<Widget> _buildActions(
     BuildContext context,
     EditWorkoutExerciseController controller,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(12),
-          bottomRight: Radius.circular(12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            offset: const Offset(0, -1),
-            blurRadius: 4,
-          ),
-        ],
+    return [
+      TextButton(
+        onPressed: (controller.isLoading || controller.isSaving)
+            ? null
+            : () => Navigator.of(context).pop(),
+        child: const Text('Cancelar'),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          TextButton(
-            onPressed: (controller.isLoading || controller.isSaving)
-                ? null
-                : () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: (controller.isLoading || controller.isSaving)
-                ? null
-                : () => _updateExercise(context, controller),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: controller.isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text('Salvar'),
-          ),
-        ],
+      ElevatedButton(
+        onPressed: (controller.isLoading || controller.isSaving)
+            ? null
+            : () => _updateExercise(context, controller),
+        child: controller.isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text('Salvar'),
       ),
-    );
+    ];
   }
 
   Future<void> _updateExercise(
@@ -238,6 +168,10 @@ class EditWorkoutExerciseDialog extends StatelessWidget {
     if (context.mounted) {
       if (success) {
         Navigator.of(context).pop();
+        SnackBarUtils.showUpdateSuccess(
+          context,
+          'Exercício atualizado com sucesso!',
+        );
       } else if (controller.hasError) {
         SnackBarUtils.showError(context, controller.errorMessage!);
       }

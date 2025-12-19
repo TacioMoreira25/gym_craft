@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryBlue = Color(0xFF6366F1); // Indigo-500
-  static const Color primaryBlueDark = Color(0xFF4F46E5); // Indigo-600
+  static const Color primaryBlue = Color(0xFF2010B6); // Custom Blue
+  static const Color primaryBlueDark = Color(0xFF1A0D91); // Darker Custom Blue
   static const Color secondaryPurple = Color(0xFF8B5CF6); // Violet-500
   static const Color accentTeal = Color(0xFF06B6D4); // Cyan-500
   static const Color accentGreen = Color(0xFF10B981); // Emerald-500
@@ -65,42 +65,92 @@ class AppTheme {
       elevation: 0,
       shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: const Color(0xFFE5E5E5), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
+      margin: EdgeInsets.zero,
     ),
 
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primaryBlue,
       foregroundColor: Colors.white,
-      elevation: 2,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderRadius: BorderRadius.all(Radius.circular(16)),
       ),
     ),
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFF9FAFB), // Gray-50
+      fillColor: const Color(0xFFF3F4F6), // Gray-100
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFD1D5DB)), // Gray-300
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFD1D5DB)), // Gray-300
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryBlue, width: 2),
+        borderSide: const BorderSide(color: primaryBlue, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: errorRed),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    ),
+
+    // Elevated Button Theme
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryBlue,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Filled Button Theme
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Outlined Button Theme
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        side: const BorderSide(color: primaryBlue),
+      ),
+    ),
+
+    // Text Button Theme
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Icon Theme
+    iconTheme: const IconThemeData(
+      color: Color(0xFF1F2937), // Gray-800
+    ),
+
+    // Popup Menu Theme
+    popupMenuTheme: PopupMenuThemeData(
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      textStyle: const TextStyle(color: Color(0xFF1F2937)),
     ),
 
     // Chip Theme
@@ -156,13 +206,13 @@ class AppTheme {
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
       // Primary colors
-      primary: Color(0xFF818CF8), // Indigo-400
-      onPrimary: Color(0xFF1E1B4B), // Indigo-900
-      primaryContainer: Color(0xFF312E81), // Indigo-800
-      onPrimaryContainer: Color(0xFFEEF2FF), // Indigo-50
+      primary: primaryBlue,
+      onPrimary: Colors.white,
+      primaryContainer: primaryBlue,
+      onPrimaryContainer: Colors.white,
       // Secondary colors
-      secondary: Color(0xFFA78BFA), // Violet-400
-      onSecondary: Color(0xFF4C1D95), // Violet-900
+      secondary: secondaryPurple,
+      onSecondary: Colors.white,
       secondaryContainer: Color(0xFF6D28D9), // Violet-700
       onSecondaryContainer: Color(0xFFF3E8FF), // Violet-50
       // Tertiary colors
@@ -176,12 +226,12 @@ class AppTheme {
       errorContainer: Color(0xFFDC2626), // Red-600
       onErrorContainer: Color(0xFFFEF2F2), // Red-50
       // Surface colors
-      surface: Color(0xFF1F2937), // Gray-800
+      surface: Color(0xFF121212),
       onSurface: Color(0xFFF9FAFB), // Gray-50
       surfaceVariant: Color(0xFF374151), // Gray-700
       onSurfaceVariant: Color(0xFF9CA3AF), // Gray-400
       // Background colors
-      background: Color(0xFF111827), // Gray-900
+      background: Color(0xFF121212),
       onBackground: Color(0xFFF9FAFB), // Gray-50
       // Outline
       outline: Color(0xFF4B5563), // Gray-600
@@ -192,13 +242,13 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 1,
-      backgroundColor: Color(0xFF818CF8), // Indigo-400
-      foregroundColor: Color(0xFF1E1B4B), // Indigo-900
+      backgroundColor: primaryBlue,
+      foregroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF1E1B4B), // Indigo-900
+        color: Colors.white,
       ),
     ),
 
@@ -208,22 +258,20 @@ class AppTheme {
       shadowColor: Colors.transparent,
       color: const Color(0xFF1F2937), // Gray-800
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: const Color(0xFF374151), // Gray-700
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
     ),
 
     // FloatingActionButton Theme
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFF818CF8), // Indigo-400
-      foregroundColor: Color(0xFF1E1B4B), // Indigo-900
-      elevation: 2,
+      backgroundColor: primaryBlue,
+      foregroundColor: Colors.white,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderRadius: BorderRadius.all(Radius.circular(16)),
       ),
     ),
 
@@ -233,18 +281,15 @@ class AppTheme {
       fillColor: const Color(0xFF374151), // Gray-700
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF4B5563)), // Gray-600
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF4B5563)), // Gray-600
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: Color(0xFF818CF8),
-          width: 2,
-        ), // Indigo-400
+        borderSide: const BorderSide(color: primaryBlue, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -253,13 +298,62 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
 
+    // Elevated Button Theme
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryBlue,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Filled Button Theme
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Outlined Button Theme
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        side: const BorderSide(color: primaryBlue),
+      ),
+    ),
+
+    // Text Button Theme
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+
+    // Icon Theme
+    iconTheme: const IconThemeData(
+      color: Color(0xFFF9FAFB), // Gray-50
+    ),
+
+    // Popup Menu Theme
+    popupMenuTheme: PopupMenuThemeData(
+      color: const Color(0xFF1F2937), // Gray-800
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      textStyle: const TextStyle(color: Color(0xFFF9FAFB)),
+    ),
+
     // Chip Theme
     chipTheme: const ChipThemeData(
       backgroundColor: Color(0xFF374151), // Gray-700
-      selectedColor: Color(0xFF312E81), // Indigo-800
-      secondarySelectedColor: Color(0xFF312E81), // Indigo-800
+      selectedColor: primaryBlue,
+      secondarySelectedColor: primaryBlue,
       labelStyle: TextStyle(color: Color(0xFF9CA3AF)), // Gray-400
-      secondaryLabelStyle: TextStyle(color: Color(0xFF818CF8)), // Indigo-400
+      secondaryLabelStyle: TextStyle(color: Colors.white),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),

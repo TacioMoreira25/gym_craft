@@ -1,31 +1,98 @@
 import 'package:flutter/material.dart';
+import '../../ui/theme/app_theme.dart';
 
-/// Utilitário para criar notificações consistentes com SnackBar
 class SnackBarUtils {
-  /// Configurações padrão de cores
-  static const Color _successColor = Color(0xFF10B981); // Green-600
-  static const Color _errorColor = Color(0xFFDC2626); // Red-600
-  static const Color _warningColor = Color(0xFFF59E0B); // Amber-500
-  static const Color _infoColor = Color(0xFF3B82F6); // Blue-500
-
   /// Configurações padrão de SnackBar
   static const Duration _defaultDuration = Duration(seconds: 3);
   static const Duration _longDuration = Duration(seconds: 5);
   static const SnackBarBehavior _defaultBehavior = SnackBarBehavior.floating;
   static const EdgeInsets _defaultMargin = EdgeInsets.all(16);
 
-  /// Mostra SnackBar de sucesso
+  /// Mostra SnackBar de sucesso ao adicionar
+  static void showAddSuccess(
+    BuildContext context,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    final color = Colors.green.shade700;
+    _displaySnackBar(
+      context,
+      message: message,
+      icon: Icons.add_circle,
+      backgroundColor: color,
+      duration: duration ?? _defaultDuration,
+      action: action,
+    );
+  }
+
+  /// Mostra SnackBar de sucesso ao atualizar
+  static void showUpdateSuccess(
+    BuildContext context,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    const color = AppTheme.primaryBlue;
+    _displaySnackBar(
+      context,
+      message: message,
+      icon: Icons.edit,
+      backgroundColor: color,
+      duration: duration ?? _defaultDuration,
+      action: action,
+    );
+  }
+
+  /// Mostra SnackBar de sucesso ao excluir
+  static void showDeleteSuccess(
+    BuildContext context,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    final color = Colors.red.shade700;
+    _displaySnackBar(
+      context,
+      message: message,
+      icon: Icons.delete,
+      backgroundColor: color,
+      duration: duration ?? _defaultDuration,
+      action: action,
+    );
+  }
+
+  /// Mostra SnackBar de sucesso ao excluir usando ScaffoldMessengerState
+  static void showDeleteSuccessAt(
+    ScaffoldMessengerState messenger,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    final color = Colors.red.shade700;
+    _showSnackBarAt(
+      messenger,
+      message: message,
+      icon: Icons.delete,
+      backgroundColor: color,
+      duration: duration ?? _defaultDuration,
+      action: action,
+    );
+  }
+
+  /// Mostra SnackBar de sucesso genérico
   static void showSuccess(
     BuildContext context,
     String message, {
     Duration? duration,
     SnackBarAction? action,
   }) {
-    _showSnackBar(
+    final color = Colors.green.shade700;
+    _displaySnackBar(
       context,
       message: message,
       icon: Icons.check_circle,
-      backgroundColor: _successColor,
+      backgroundColor: color,
       duration: duration ?? _defaultDuration,
       action: action,
     );
@@ -38,11 +105,12 @@ class SnackBarUtils {
     Duration? duration,
     SnackBarAction? action,
   }) {
-    _showSnackBar(
+    final color = Colors.red.shade700;
+    _displaySnackBar(
       context,
       message: message,
       icon: Icons.error,
-      backgroundColor: _errorColor,
+      backgroundColor: color,
       duration: duration ?? _longDuration,
       action: action,
     );
@@ -55,11 +123,12 @@ class SnackBarUtils {
     Duration? duration,
     SnackBarAction? action,
   }) {
-    _showSnackBar(
+    final color = Colors.orange.shade800;
+    _displaySnackBar(
       context,
       message: message,
       icon: Icons.warning,
-      backgroundColor: _warningColor,
+      backgroundColor: color,
       duration: duration ?? _defaultDuration,
       action: action,
     );
@@ -72,11 +141,12 @@ class SnackBarUtils {
     Duration? duration,
     SnackBarAction? action,
   }) {
-    _showSnackBar(
+    const color = AppTheme.primaryBlue;
+    _displaySnackBar(
       context,
       message: message,
       icon: Icons.info,
-      backgroundColor: _infoColor,
+      backgroundColor: color,
       duration: duration ?? _defaultDuration,
       action: action,
     );
@@ -93,7 +163,7 @@ class SnackBarUtils {
     SnackBarBehavior? behavior,
     EdgeInsets? margin,
   }) {
-    _showSnackBar(
+    _displaySnackBar(
       context,
       message: message,
       icon: icon,
@@ -105,9 +175,45 @@ class SnackBarUtils {
     );
   }
 
-  /// Método interno para criar e mostrar SnackBar
-  static void _showSnackBar(
-    BuildContext context, {
+  /// Mostra SnackBar de sucesso usando ScaffoldMessengerState
+  static void showSuccessAt(
+    ScaffoldMessengerState messenger,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    final color = Colors.green.shade700;
+    _showSnackBarAt(
+      messenger,
+      message: message,
+      icon: Icons.check_circle,
+      backgroundColor: color,
+      duration: duration ?? _defaultDuration,
+      action: action,
+    );
+  }
+
+  /// Mostra SnackBar de erro usando ScaffoldMessengerState
+  static void showErrorAt(
+    ScaffoldMessengerState messenger,
+    String message, {
+    Duration? duration,
+    SnackBarAction? action,
+  }) {
+    final color = Colors.red.shade700;
+    _showSnackBarAt(
+      messenger,
+      message: message,
+      icon: Icons.error,
+      backgroundColor: color,
+      duration: duration ?? _longDuration,
+      action: action,
+    );
+  }
+
+  /// Método interno para criar e mostrar SnackBar usando ScaffoldMessengerState
+  static void _showSnackBarAt(
+    ScaffoldMessengerState messenger, {
     required String message,
     required Color backgroundColor,
     IconData? icon,
@@ -117,9 +223,9 @@ class SnackBarUtils {
     EdgeInsets? margin,
   }) {
     // Remove SnackBar atual se existir
-    ScaffoldMessenger.of(context).clearSnackBars();
+    messenger.clearSnackBars();
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -149,12 +255,37 @@ class SnackBarUtils {
     );
   }
 
+  /// Método interno para criar e mostrar SnackBar
+  static void _displaySnackBar(
+    BuildContext context, {
+    required String message,
+    required Color backgroundColor,
+    IconData? icon,
+    Duration? duration,
+    SnackBarAction? action,
+    SnackBarBehavior? behavior,
+    EdgeInsets? margin,
+  }) {
+    _showSnackBarAt(
+      ScaffoldMessenger.of(context),
+      message: message,
+      backgroundColor: backgroundColor,
+      icon: icon,
+      duration: duration,
+      action: action,
+      behavior: behavior,
+      margin: margin,
+    );
+  }
+
   /// Mostra SnackBar de loading com CircularProgressIndicator
   static void showLoading(
     BuildContext context,
     String message, {
     Duration? duration,
   }) {
+    final color = Theme.of(context).colorScheme.primary;
+
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -182,7 +313,7 @@ class SnackBarUtils {
             ),
           ],
         ),
-        backgroundColor: _infoColor,
+        backgroundColor: color,
         duration: duration ?? const Duration(seconds: 10),
         behavior: _defaultBehavior,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -207,11 +338,11 @@ class SnackBarUtils {
   }
 
   /// Sucesso ao excluir
-  static void showDeleteSuccess(BuildContext context, [String? itemName]) {
+  static void showDeleteSuccessMsg(BuildContext context, [String? itemName]) {
     final message = itemName != null
         ? '$itemName excluído com sucesso!'
         : 'Excluído com sucesso!';
-    showSuccess(context, message);
+    showDeleteSuccess(context, message);
   }
 
   /// Sucesso ao criar
@@ -219,15 +350,15 @@ class SnackBarUtils {
     final message = itemName != null
         ? '$itemName criado com sucesso!'
         : 'Criado com sucesso!';
-    showSuccess(context, message);
+    showAddSuccess(context, message);
   }
 
   /// Sucesso ao atualizar
-  static void showUpdateSuccess(BuildContext context, [String? itemName]) {
+  static void showUpdateSuccessMsg(BuildContext context, [String? itemName]) {
     final message = itemName != null
         ? '$itemName atualizado com sucesso!'
         : 'Atualizado com sucesso!';
-    showSuccess(context, message);
+    showUpdateSuccess(context, message);
   }
 
   /// Erro genérico de operação

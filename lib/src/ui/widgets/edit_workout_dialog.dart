@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/workout.dart';
 import '../../data/services/database_service.dart';
+import '../../shared/utils/snackbar_utils.dart';
+import 'app_dialog.dart';
 
 class EditWorkoutDialog extends StatefulWidget {
   final Workout workout;
@@ -27,7 +29,9 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.workout.name);
-    _descriptionController = TextEditingController(text: widget.workout.description ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.workout.description ?? '',
+    );
   }
 
   @override
@@ -58,21 +62,14 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Treino atualizado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
+        SnackBarUtils.showUpdateSuccess(
+          context,
+          'Treino atualizado com sucesso!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao atualizar treino: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarUtils.showError(context, 'Erro ao atualizar treino: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -81,14 +78,8 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Row(
-        children: [
-          Icon(Icons.edit, color: Colors.blue),
-          SizedBox(width: 8),
-          Text('Editar Treino'),
-        ],
-      ),
+    return AppDialog(
+      title: 'Editar Treino',
       content: Form(
         key: _formKey,
         child: Column(
@@ -124,13 +115,16 @@ class _EditWorkoutDialogState extends State<EditWorkoutDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: _isLoading ? null : _updateWorkout,
           child: _isLoading
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Salvar'),
         ),

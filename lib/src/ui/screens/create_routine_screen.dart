@@ -424,7 +424,7 @@ class _CreateRoutineView extends StatelessWidget {
     final success = await controller.saveRoutine();
 
     if (success && context.mounted) {
-      SnackBarUtils.showSuccess(context, 'Rotina criada com sucesso!');
+      SnackBarUtils.showAddSuccess(context, 'Rotina criada com sucesso!');
       Navigator.of(context).pop();
     }
   }

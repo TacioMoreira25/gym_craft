@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
 import '../../models/workout.dart';
 import '../../models/exercise.dart';
 import '../../models/workout_exercise.dart';
@@ -13,6 +14,7 @@ import '../widgets/progression_chart.dart';
 import '../../data/repositories/history_repository.dart';
 import '../controllers/workout_detail_controller.dart';
 import 'workout_execution_screen.dart';
+import '../widgets/app_dialog.dart';
 
 class WorkoutDetailScreen extends StatelessWidget {
   final Workout workout;
@@ -124,18 +126,18 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurface,
+          color: theme.appBarTheme.foregroundColor,
         ),
       ),
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
       leading: controller.isReorderMode
           ? IconButton(
-              icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
+              icon: const Icon(Icons.close),
               onPressed: () => controller.exitReorderMode(),
             )
           : IconButton(
-              icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+              icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
             ),
       actions: [
@@ -238,9 +240,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.12),
-              ),
             ),
             child: Row(
               children: [
@@ -499,11 +498,14 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                           Row(
                             children: [
                               if ((exercise?.category ?? '').isNotEmpty)
-                                Text(
-                                  exercise?.category ?? '',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    fontSize: 11,
+                                Flexible(
+                                  child: Text(
+                                    exercise?.category ?? '',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontSize: 11,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               if ((exercise?.category ?? '').isNotEmpty &&
@@ -554,10 +556,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                           },
                         ),
                         PopupMenuButton(
-                          icon: Icon(
-                            Icons.more_vert_rounded,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          ),
+                          icon: const Icon(Icons.more_vert_rounded),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -569,7 +568,7 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                                   Icon(
                                     Icons.edit_rounded,
                                     size: 20,
-                                    color: Colors.blue[600],
+                                    color: AppTheme.primaryBlue,
                                   ),
                                   const SizedBox(width: 12),
                                   const Text('Editar'),
@@ -588,7 +587,9 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                                   const SizedBox(width: 12),
                                   Text(
                                     'Excluir',
-                                    style: TextStyle(color: theme.colorScheme.error),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.error,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1157,11 +1158,12 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     BuildContext context,
     WorkoutDetailController controller,
   ) async {
-    final Exercise? selectedExercise = await Navigator.of(context).push(
+    await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             SelectExerciseScreen(
               excludeExerciseIds: controller.getExistingExerciseIds(),
+              workoutId: controller.workout.id,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
@@ -1177,17 +1179,8 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
       ),
     );
 
-    if (selectedExercise != null && context.mounted) {
-      await showDialog(
-        context: context,
-        builder: (context) => AddWorkoutExerciseDialog(
-          workoutId: controller.workout.id!,
-          selectedExercise: selectedExercise,
-          onExerciseAdded: () {
-            controller.loadWorkoutExercises();
-          },
-        ),
-      );
+    if (context.mounted) {
+      controller.loadWorkoutExercises();
     }
   }
 
@@ -1222,121 +1215,65 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
     BuildContext context,
     WorkoutDetailController controller,
     WorkoutExercise workoutExercise,
-  ) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        final theme = Theme.of(dialogContext);
-
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              const Text('Confirmar Exclusão'),
-            ],
-          ),
-          content: Text(
-            'Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?',
-            style: theme.textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                await controller.deleteExercise(workoutExercise);
-                if (context.mounted) {
-                  SnackBarUtils.showSuccess(
-                    context,
-                    'Exercício removido do treino!',
-                  );
-                }
-              },
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Excluir'),
-            ),
-          ],
-        );
-      },
+  ) async {
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Confirmar Exclusão',
+      content:
+          'Tem certeza que deseja remover "${workoutExercise.exercise?.name ?? 'este exercício'}" deste treino?',
+      confirmText: 'Excluir',
+      isDestructive: true,
     );
+
+    if (confirmed && context.mounted) {
+      try {
+        await controller.deleteExercise(workoutExercise);
+        if (context.mounted) {
+          SnackBarUtils.showDeleteSuccess(
+            context,
+            'Exercício removido do treino!',
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          SnackBarUtils.showError(context, 'Erro ao remover exercício: $e');
+        }
+      }
+    }
   }
 
   void _clearExerciseHistory(
     BuildContext context,
     WorkoutDetailController controller,
     WorkoutExercise workoutExercise,
-  ) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        final theme = Theme.of(dialogContext);
-
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.history_rounded, color: Colors.orange[600], size: 28),
-              const SizedBox(width: 12),
-              const Text('Limpar Histórico'),
-            ],
-          ),
-          content: Text(
-            'Tem certeza que deseja limpar todo o histórico de execução de "${workoutExercise.exercise?.name ?? 'este exercício'}"? Esta ação não pode ser desfeita.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                if (workoutExercise.exercise?.id != null) {
-                  await controller.clearHistoryForExercise(
-                    workoutExercise.exercise!.id!,
-                  );
-                  if (context.mounted) {
-                    SnackBarUtils.showSuccess(
-                      context,
-                      'Histórico limpo com sucesso!',
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Limpar'),
-            ),
-          ],
-        );
-      },
+  ) async {
+    final confirmed = await AppDialog.showConfirmation(
+      context,
+      title: 'Limpar Histórico',
+      content:
+          'Tem certeza que deseja limpar todo o histórico de execução de "${workoutExercise.exercise?.name ?? 'este exercício'}"? Esta ação não pode ser desfeita.',
+      confirmText: 'Limpar',
+      confirmColor: Colors.orange[600],
     );
+
+    if (confirmed && context.mounted) {
+      if (workoutExercise.exercise?.id != null) {
+        try {
+          await controller.clearHistoryForExercise(
+            workoutExercise.exercise!.id!,
+          );
+          if (context.mounted) {
+            SnackBarUtils.showDeleteSuccess(
+              context,
+              'Histórico limpo com sucesso!',
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            SnackBarUtils.showError(context, 'Erro ao limpar histórico: $e');
+          }
+        }
+      }
+    }
   }
 }
