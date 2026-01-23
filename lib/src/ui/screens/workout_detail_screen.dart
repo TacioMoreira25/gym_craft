@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../shared/utils/progression_chart_utils.dart.dart';
 import '../theme/app_theme.dart';
 import '../../models/workout.dart';
 import '../../models/exercise.dart';
@@ -1075,8 +1076,6 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                               child: Center(child: CircularProgressIndicator()),
                             );
                           }
-
-                          // Se não tiver dados ou lista vazia
                           if (!snapshot.hasData || snapshot.data!.isEmpty) {
                             return Container(
                               height: 150,
@@ -1091,16 +1090,27 @@ class _WorkoutDetailViewState extends State<_WorkoutDetailView>
                             );
                           }
 
-                          // Renderiza o gráfico
+                          final List<ProgressionPoint> chartData =
+                              ProgressionChartUtils.aggregateProgressionData(
+                                snapshot.data!,
+                              );
+                          if (chartData.isEmpty) {
+                            return Container(
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                "Nenhum histórico registrado ainda.",
+                              ),
+                            );
+                          }
                           return ProgressionChart(
-                            data: snapshot.data!,
-                            height: 280, // Altura boa para visualização
-                            // Usa as cores do tema do seu app
+                            data: chartData,
+                            height: 250,
                             contentColor: theme.colorScheme.primary,
                             spotColor: theme.colorScheme.secondary,
-                            backgroundColor: const Color(
-                              0xFF1E1E1E,
-                            ), // Fundo escuro fixo ou use theme.cardColor
                           );
                         },
                       ),
